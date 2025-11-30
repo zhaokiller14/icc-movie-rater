@@ -6,12 +6,27 @@ on:
     paths: ['frontend/**']
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
     
-    - name: Deploy to Azure Web App
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install and build frontend
+      run: |
+        cd frontend
+        npm ci
+        npm run build --configuration=production
+        
+    - name: Deploy to Azure
       uses: azure/webapps-deploy@v2
       with:
         app-name: 'icc-movie-rating-frontend'
