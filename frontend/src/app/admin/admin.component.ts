@@ -1,6 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ApiService, Movie, MovieWithAverage, AverageResponse } from '../services/api.service';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of, tap } from 'rxjs';
 
 @Component({
   selector: 'app-admin',
@@ -10,191 +12,228 @@ import { ApiService, Movie, MovieWithAverage, AverageResponse } from '../service
   imports: [CommonModule]
 })
 export class AdminComponent implements OnInit {
-  movies: MovieWithAverage[] = [];
-  currentMovie: MovieWithAverage | null = null;
-  isLoading = true;
-  currentView: 'idle' | 'rating' = 'idle';
-  loadingRatings: Set<number> = new Set(); // Track which movies are loading rating counts
-  private pendingRequests = 0;
-  constructor(private apiService: ApiService) {}
+  private apiService = inject(ApiService);
+
+  // Signals for state management
+  movies = signal<MovieWithAverage[]>([]);
+  currentMovie = signal<MovieWithAverage | null>(null);
+  isLoading = signal(true);
+  currentView = signal<'idle' | 'rating'>('idle');
+  loadingRatings = signal<Set<number>>(new Set());
+
+  // Computed values
+  totalMovies = computed(() => this.movies().length);
+  totalRatings = computed(() => 
+    this.movies().reduce((sum, movie) => sum + (movie.ratingCount || 0), 0)
+  );
+  
+  averageOfAllMovies = computed(() => {
+    const moviesWithRatings = this.movies().filter(m => m.average && m.average > 0);
+    if (moviesWithRatings.length === 0) return 0;
+    const total = moviesWithRatings.reduce((sum, m) => sum + m.average!, 0);
+    return total / moviesWithRatings.length;
+  });
+
+  // Template helpers as computed signals
+  statusColor = computed(() => 
+    this.currentView() === 'rating' ? 'bg-primary' : 'bg-muted'
+  );
+
+  statusText = computed(() => 
+    this.currentView() === 'idle' ? 'Screening in Progress' : 'Rating Period'
+  );
+
+  currentMovieDisplay = computed(() => 
+    this.currentMovie() ? this.currentMovie()!.title : 'No movie selected'
+  );
 
   ngOnInit(): void {
     this.loadMovies();
     this.loadCurrentMovie();
   }
 
-  private completeLoading(): void {
-    this.pendingRequests--;
-    if (this.pendingRequests <= 0) {
-      this.isLoading = false;
-      this.pendingRequests = 0;
-    }
-  }
-
   loadMovies(): void {
-    this.isLoading = true;
-    this.pendingRequests = 1;
+    this.isLoading.set(true);
     
-    this.apiService.getAllMovies().subscribe({
-      next: (movies) => {
-        this.movies = movies;
+    this.apiService.getAllMovies().pipe(
+      tap(movies => {
+        this.movies.set(movies);
         this.loadAverages();
-      },
-      error: (error) => {
+      }),
+      catchError(error => {
         console.error('Error loading movies:', error);
-        this.completeLoading();
-      }
-    });
+        this.isLoading.set(false);
+        return of([]);
+      })
+    ).subscribe();
   }
 
   loadAverages(): void {
-    this.pendingRequests++;
-    
-    this.apiService.getAverages().subscribe({
-      next: (averages: AverageResponse[]) => {
-        // Map averages to movies
-        this.movies = this.movies.map(movie => {
-          const averageData = averages.find(avg => avg.movieId === movie.id);
-          return {
+    this.apiService.getAverages().pipe(
+      tap((averages: AverageResponse[]) => {
+        // Update movies with averages
+        this.movies.update(currentMovies => 
+          currentMovies.map(movie => {
+            const averageData = averages.find(avg => avg.movieId === movie.id);
+            return {
+              ...movie,
+              average: averageData?.average
+            };
+          })
+        );
+        
+        // Update current movie if it exists
+        const currentMovieValue = this.currentMovie();
+        if (currentMovieValue) {
+          const currentMovieAverage = averages.find(avg => avg.movieId === currentMovieValue.id);
+          this.currentMovie.update(movie => movie ? {
             ...movie,
-            average: averageData?.average
-          };
-        });
-        
-        // Load rating counts for all movies
-        this.loadAllRatingCounts();
-        
-        // Also update currentMovie if it exists
-        if (this.currentMovie) {
-          const currentMovieAverage = averages.find(avg => avg.movieId === this.currentMovie!.id);
-          this.currentMovie = {
-            ...this.currentMovie,
             average: currentMovieAverage?.average
-          };
-          this.loadRatingCount(this.currentMovie.id);
+          } : null);
         }
         
-        this.completeLoading();
-      },
-      error: (error) => {
-        console.error('Error loading averages:', error);
-        // Even if averages fail, try to load rating counts
         this.loadAllRatingCounts();
-        this.completeLoading();
-      }
-    });
+      }),
+      catchError(error => {
+        console.error('Error loading averages:', error);
+        this.loadAllRatingCounts();
+        return of([]);
+      })
+    ).subscribe();
   }
 
   loadAllRatingCounts(): void {
-    if (this.movies.length === 0) {
+    const movies = this.movies();
+    if (movies.length === 0) {
+      this.isLoading.set(false);
       return;
     }
+
+    let completedRequests = 0;
     
-    this.pendingRequests += this.movies.length;
-    this.movies.forEach(movie => {
-      this.loadRatingCount(movie.id);
+    movies.forEach(movie => {
+      this.loadRatingCount(movie.id, () => {
+        completedRequests++;
+        if (completedRequests === movies.length) {
+          this.isLoading.set(false);
+        }
+      });
     });
   }
 
-  loadRatingCount(movieId: number): void {
-    this.loadingRatings.add(movieId);
-    
-    this.apiService.getNumberOfRatingsForMovie(movieId).subscribe({
-      next: (count) => {
-        this.movies = this.movies.map(movie => 
-          movie.id === movieId ? { ...movie, ratingCount: count } : movie
-        );
-        
-        // Update currentMovie if it's the one we're loading
-        if (this.currentMovie && this.currentMovie.id === movieId) {
-          this.currentMovie = { ...this.currentMovie, ratingCount: count };
-        }
-        
-        this.loadingRatings.delete(movieId);
-        this.completeLoading();
-      },
-      error: (error) => {
-        console.error(`Error loading rating count for movie ${movieId}:`, error);
-        this.loadingRatings.delete(movieId);
-        this.completeLoading();
-      }
+  loadRatingCount(movieId: number, onComplete?: () => void): void {
+    this.loadingRatings.update(loadingSet => {
+      const newSet = new Set(loadingSet);
+      newSet.add(movieId);
+      return newSet;
     });
+
+    this.apiService.getNumberOfRatingsForMovie(movieId).pipe(
+      tap(count => {
+        // Update movies array
+        this.movies.update(currentMovies => 
+          currentMovies.map(movie => 
+            movie.id === movieId ? { ...movie, ratingCount: count } : movie
+          )
+        );
+
+        // Update current movie if it matches
+        const currentMovieValue = this.currentMovie();
+        if (currentMovieValue?.id === movieId) {
+          this.currentMovie.update(movie => movie ? { ...movie, ratingCount: count } : null);
+        }
+
+        this.loadingRatings.update(loadingSet => {
+          const newSet = new Set(loadingSet);
+          newSet.delete(movieId);
+          return newSet;
+        });
+        
+        onComplete?.();
+      }),
+      catchError(error => {
+        console.error(`Error loading rating count for movie ${movieId}:`, error);
+        this.loadingRatings.update(loadingSet => {
+          const newSet = new Set(loadingSet);
+          newSet.delete(movieId);
+          return newSet;
+        });
+        onComplete?.();
+        return of(0);
+      })
+    ).subscribe();
   }
 
   loadCurrentMovie(): void {
-    this.apiService.getCurrentMovie().subscribe({
-      next: (movie) => {
-        this.currentMovie = movie;
-        // If we already have data loaded, update the current movie
-        if (this.movies.length > 0) {
-          const movieWithData = this.movies.find(m => m.id === movie.id);
+    this.apiService.getCurrentMovie().pipe(
+      tap(movie => {
+        this.currentMovie.set(movie);
+        
+        // If we already have data, update the current movie
+        const moviesValue = this.movies();
+        if (moviesValue.length > 0) {
+          const movieWithData = moviesValue.find(m => m.id === movie.id);
           if (movieWithData) {
-            this.currentMovie = { 
+            this.currentMovie.set({ 
               ...movie, 
               average: movieWithData.average,
               ratingCount: movieWithData.ratingCount
-            };
+            });
           }
         } else {
-          // Load rating count for current movie if we don't have it yet
+          // Load rating count for current movie
           this.loadRatingCount(movie.id);
         }
-      },
-      error: (error) => {
+      }),
+      catchError(error => {
         console.error('Error loading current movie:', error);
-        this.currentMovie = null;
-      }
-    });
+        this.currentMovie.set(null);
+        return of(null);
+      })
+    ).subscribe();
   }
 
   selectMovie(movieId: number): void {
-    this.apiService.selectMovie(movieId).subscribe({
-      next: () => {
+    this.apiService.selectMovie(movieId).pipe(
+      tap(() => {
         this.loadCurrentMovie();
-        this.currentView = 'idle';
-      },
-      error: (error) => {
+        this.currentView.set('idle');
+      }),
+      catchError(error => {
         console.error('Error setting next movie:', error);
-      }
-    });
+        return of(null);
+      })
+    ).subscribe();
   }
 
   startRatingPeriod(): void {
-    if (this.currentMovie) {
-      this.apiService.startRatingSession(this.currentMovie.id).subscribe({
-        next: () => {
-          this.currentView = 'rating';
-        },
-        error: (error) => {
+    const currentMovieValue = this.currentMovie();
+    if (currentMovieValue) {
+      this.apiService.startRatingSession(currentMovieValue.id).pipe(
+        tap(() => {
+          this.currentView.set('rating');
+        }),
+        catchError(error => {
           console.error('Error starting rating session:', error);
-        }
-      });
+          return of(null);
+        })
+      ).subscribe();
     }
   }
 
   setIdle(): void {
-    this.apiService.setIdle().subscribe({
-      next: () => {
-        this.currentView = 'idle';
-      },
-      error: (error) => {
+    this.apiService.setIdle().pipe(
+      tap(() => {
+        this.currentView.set('idle');
+      }),
+      catchError(error => {
         console.error('Error setting idle:', error);
-      }
-    });
+        return of(null);
+      })
+    ).subscribe();
   }
 
-  getStatusColor(): string {
-    return this.currentView === 'rating' ? 'bg-primary' : 'bg-muted';
-  }
-
-  getStatusText(): string {
-    return this.currentView === 'idle' ? 'Screening in Progress' : 'Rating Period';
-  }
-
-  getCurrentMovieDisplay(): string {
-    return this.currentMovie ? this.currentMovie.title : 'No movie selected';
-  }
-
+  // Helper methods for template
   formatAverage(average: number | null | undefined): string {
     if (average === null || average === undefined) return 'No ratings';
     return average.toFixed(1);
@@ -213,6 +252,6 @@ export class AdminComponent implements OnInit {
   }
 
   isRatingLoading(movieId: number): boolean {
-    return this.loadingRatings.has(movieId);
+    return this.loadingRatings().has(movieId);
   }
 }

@@ -1,10 +1,12 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { ApiService, Movie, RatingData } from '../services/api.service';
 import { SocketService } from '../services/socket.service';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Params } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { switchMap, catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-rating',
@@ -14,27 +16,31 @@ import { ActivatedRoute } from '@angular/router';
   imports: [CommonModule, FormsModule, LucideAngularModule]
 })
 export class RatingComponent implements OnInit, OnDestroy {
-  rating: number = 0;
-  hoveredRating: number = 0;
-  currentMovie: Movie | null = null;
-  isSubmitting: boolean = false;
-  hasSubmitted: boolean = false;
-  ratingCount: number = 0;
-  userCode: string = '';
+  // Signals for local state
+  rating = signal(0);
+  hoveredRating = signal(0);
+  currentMovie = signal<Movie | null>(null);
+  isSubmitting = signal(false);
+  hasSubmitted = signal(false);
+  ratingCount = signal(0);
+  userCode = signal('');
+
+private routeParams!: () => Params;
 
   constructor(
     private apiService: ApiService,
     private socketService: SocketService,
     private route: ActivatedRoute
-  ) {}
+  ) {
+    this.routeParams = toSignal(this.route.queryParams, { initialValue: {} as Params });
+  }
 
   ngOnInit(): void {
-    this.route.queryParams.subscribe(params => {
-      const codeFromUrl = params['code'];
-      if (codeFromUrl) {
-        this.userCode = codeFromUrl;
-      }
-    });
+    // Set user code from URL
+    const codeFromUrl = this.routeParams()['code'];
+    if (codeFromUrl) {
+      this.userCode.set(codeFromUrl);
+    }
 
     this.socketService.connect();
 
@@ -44,9 +50,9 @@ export class RatingComponent implements OnInit, OnDestroy {
     });
     
     this.socketService.onIdle(() => {
-      this.rating = 0;
-      this.hoveredRating = 0;
-      this.currentMovie = null;
+      this.rating.set(0);
+      this.hoveredRating.set(0);
+      this.currentMovie.set(null);
       this.resetSubmissionState();
     });
 
@@ -58,22 +64,22 @@ export class RatingComponent implements OnInit, OnDestroy {
   }
 
   private resetSubmissionState(): void {
-    this.hasSubmitted = false;
-    this.ratingCount = 0;
+    this.hasSubmitted.set(false);
+    this.ratingCount.set(0);
   }
 
   private loadCurrentMovie(): void {
     this.apiService.getCurrentMovie().subscribe({
       next: (movie: Movie) => {
-        this.currentMovie = movie;
+        this.currentMovie.set(movie);
         if (movie) {
           this.loadRatingCount(movie.id);
         }
       },
       error: (error) => {
         console.error('Error loading current movie:', error);
-        this.currentMovie = null;
-        this.ratingCount = 0;
+        this.currentMovie.set(null);
+        this.ratingCount.set(0);
       }
     });
   }
@@ -81,61 +87,64 @@ export class RatingComponent implements OnInit, OnDestroy {
   private loadRatingCount(movieId: number): void {
     this.apiService.getNumberOfRatingsForMovie(movieId).subscribe({
       next: (count: number) => {
-        this.ratingCount = count;
+        this.ratingCount.set(count);
       },
       error: (error) => {
         console.error('Error loading rating count:', error);
-        this.ratingCount = 0;
+        this.ratingCount.set(0);
       }
     });
   }
 
   handleSubmit(): void {
-    if (this.rating > 0 && this.userCode && this.currentMovie) {
-      this.isSubmitting = true;
+    const currentRating = this.rating();
+    const currentUserCode = this.userCode();
+    const currentMovie = this.currentMovie();
+
+    if (currentRating > 0 && currentUserCode && currentMovie) {
+      this.isSubmitting.set(true);
       const ratingData: RatingData = {
-        value: this.rating,
-        userCode: this.userCode
+        value: currentRating,
+        userCode: currentUserCode
       };
 
-      this.apiService.submitRating(this.currentMovie.id, ratingData).subscribe({
+      this.apiService.submitRating(currentMovie.id, ratingData).subscribe({
         next: () => {
-          console.log(`Rating ${this.rating} submitted successfully for movie ${this.currentMovie?.title}`);
-          this.hasSubmitted = true;
-          this.isSubmitting = false;
-          // Update the rating count after submission
-          this.loadRatingCount(this.currentMovie!.id);
+          console.log(`Rating ${currentRating} submitted successfully for movie ${currentMovie.title}`);
+          this.hasSubmitted.set(true);
+          this.isSubmitting.set(false);
+          this.loadRatingCount(currentMovie.id);
         },
         error: (error) => {
           console.error('Failed to submit rating:', error);
-          this.isSubmitting = false;
+          this.isSubmitting.set(false);
         }
       });
     } else {
-      if (!this.userCode) {
+      if (!currentUserCode) {
         alert('Please enter your event code before submitting.');
-      } else if (!this.currentMovie) {
+      } else if (!currentMovie) {
         alert('No movie selected to rate.');
-      } else if (this.rating === 0) {
+      } else if (currentRating === 0) {
         alert('Please select a rating.');
       }
     }
   }
 
   setRating(value: number): void {
-    this.rating = value;
+    this.rating.set(value);
   }
 
   setHoveredRating(value: number): void {
-    this.hoveredRating = value;
+    this.hoveredRating.set(value);
   }
 
   clearHoveredRating(): void {
-    this.hoveredRating = 0;
+    this.hoveredRating.set(0);
   }
 
   getStarState(starIndex: number): 'full' | 'half' | 'empty' {
-    const effectiveRating = this.hoveredRating || this.rating;
+    const effectiveRating = this.hoveredRating() || this.rating();
     if (effectiveRating >= starIndex) {
       return 'full';
     } else if (effectiveRating === starIndex - 0.5) {
@@ -145,6 +154,6 @@ export class RatingComponent implements OnInit, OnDestroy {
   }
 
   setUserCode(code: string): void {
-    this.userCode = code;
+    this.userCode.set(code);
   }
 }
