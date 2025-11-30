@@ -1,0 +1,93 @@
+<div class="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
+  <div class="absolute -left-96 top-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/20 blur-3xl"></div>
+
+  <div class="relative z-10 w-full max-w-2xl px-6">
+    <div *ngIf="currentMovie; else noMovieSelected" class="bg-card border border-border rounded-2xl p-12 shadow-2xl">
+      <div class="text-center mb-8">
+        <div class="w-20 h-20 mx-auto mb-4 bg-background rounded-full flex items-center justify-center border border-border">
+          <span class="text-muted-foreground text-xs">ICC</span>
+        </div>
+        
+        <h2 class="text-3xl font-bold mb-2 text-foreground">
+          Rate This Movie
+        </h2>
+        <p class="text-xl text-muted-foreground">
+          {{ currentMovie.title }}
+        </p>
+      </div>
+
+      <!-- Stars -->
+      <div class="flex justify-center gap-2 mb-8">
+        <ng-container *ngFor="let i of [1,2,3,4,5]">
+          <div class="relative cursor-pointer">
+            <!-- Left half (0.5 star) -->
+            <div class="absolute inset-0 w-1/2 z-10"
+                 (click)="setRating(i - 0.5)"
+                 (mouseenter)="setHoveredRating(i - 0.5)"
+                 (mouseleave)="clearHoveredRating()"></div>
+            <!-- Right half (full star) -->
+            <div class="absolute inset-0 left-1/2 w-1/2 z-10"
+                 (click)="setRating(i)"
+                 (mouseenter)="setHoveredRating(i)"
+                 (mouseleave)="clearHoveredRating()"></div>
+
+            <!-- Star icon -->
+            <ng-container [ngSwitch]="getStarState(i)">
+              <svg *ngSwitchCase="'full'" class="w-16 h-16 transition-colors fill-primary stroke-primary" viewBox="0 0 24 24">
+                <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.789 1.402 8.172L12 18.896l-7.336 3.876 1.402-8.172L.132 9.21l8.2-1.192L12 .587z"/>
+              </svg>
+
+              <svg *ngSwitchCase="'half'" class="w-16 h-16 transition-colors stroke-primary" viewBox="0 0 24 24">
+                <defs>
+                  <linearGradient [attr.id]="'halfGrad-' + i" x1="0" x2="1">
+                    <stop offset="50%" stop-color="currentColor"></stop>
+                    <stop offset="50%" stop-color="transparent"></stop>
+                  </linearGradient>
+                </defs>
+                <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.789 1.402 8.172L12 18.896l-7.336 3.876 1.402-8.172L.132 9.21l8.2-1.192L12 .587z" [attr.fill]="'url(#halfGrad-' + i + ')'" />
+              </svg>
+
+              <svg *ngSwitchDefault class="w-16 h-16 transition-colors fill-none stroke-muted-foreground" viewBox="0 0 24 24">
+                <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.789 1.402 8.172L12 18.896l-7.336 3.876 1.402-8.172L.132 9.21l8.2-1.192L12 .587z" stroke-width="1.5" fill="none"/>
+              </svg>
+            </ng-container>
+          </div>
+        </ng-container>
+      </div>
+
+      <!-- Rating display -->
+      <div class="text-center mb-8">
+        <p class="text-4xl font-bold text-primary">
+          {{ rating > 0 ? rating.toFixed(1) : '—' }}
+        </p>
+        <p class="text-sm text-muted-foreground">out of 5 stars</p>
+      </div>
+
+      <!-- Submit button -->
+      <button (click)="handleSubmit()"
+              [disabled]="rating === 0 || isSubmitting"
+              class="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
+        <span *ngIf="isSubmitting" class="flex items-center justify-center">
+          <span class="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></span>
+          Submitting...
+        </span>
+        <span *ngIf="!isSubmitting">Submit Rating</span>
+      </button>
+    </div>
+
+    <!-- No movie selected state -->
+    <ng-template #noMovieSelected>
+      <div class="flex flex-col items-center justify-center py-20 text-center">
+        <div class="w-32 h-32 mx-auto mb-8 bg-muted rounded-full flex items-center justify-center">
+          <svg class="w-16 h-16 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 4V6a2 2 0 012-2h8a2 2 0 012 2v2m-9 6V14a2 2 0 012-2h8a2 2 0 012 2v2m-9 6v-4a2 2 0 012-2h8a2 2 0 012 2v4"></path>
+          </svg>
+        </div>
+        <h2 class="text-2xl font-bold mb-4 text-foreground">Waiting for Rating Period</h2>
+        <p class="text-muted-foreground max-w-md">
+          The rating interface will become available once the administrator selects a movie for rating. Please wait for the screening to conclude and the rating period to begin.
+        </p>
+      </div>
+    </ng-template>
+  </div>
+</div>

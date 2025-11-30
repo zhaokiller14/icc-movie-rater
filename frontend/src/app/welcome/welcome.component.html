@@ -1,0 +1,44 @@
+<div class="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
+  <div class="absolute -right-64 -top-64 w-[600px] h-[600px] rounded-full bg-primary/20 blur-3xl"></div>
+  
+  <div class="relative z-10 w-full max-w-md px-6">
+    <div class="text-center mb-12">
+      <div class="w-32 h-32 mx-auto mb-8 bg-card rounded-full flex items-center justify-center border border-border">
+        <span class="text-muted-foreground text-sm">ICC Logo</span>
+      </div>
+      
+      <h1 class="text-4xl font-bold mb-4 text-foreground">
+        ICC Movie Festival
+      </h1>
+      <p class="text-muted-foreground">
+        Ciné Radio INSAT
+      </p>
+    </div>
+
+    <form (submit)="handleSubmit($event)" class="space-y-6">
+      <div class="space-y-2">
+        <label for="code" class="text-sm font-medium text-foreground">
+          Enter Your Access Code
+        </label>
+        <input
+          id="code"
+          #codeInput
+          type="text"
+          maxlength="3"
+          placeholder="CODE"
+          [value]="code"
+          (input)="updateCode(codeInput.value)"
+          class="text-center text-2xl font-bold tracking-widest uppercase h-14 w-full border border-input bg-background px-3 py-2 rounded-md"
+        />
+      </div>
+
+      <button
+        type="submit"
+        class="w-full h-12 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-md transition-colors"
+        [disabled]="code.length !== 3"
+      >
+        Enter Festival
+      </button>
+    </form>
+  </div>
+</div>

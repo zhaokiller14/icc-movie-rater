@@ -1,0 +1,154 @@
+<div class="min-h-screen bg-background p-8 relative overflow-hidden">
+  <!-- Large circle accent -->
+  <div class="absolute right-0 bottom-0 w-[600px] h-[600px] rounded-full bg-primary/20 blur-3xl"></div>
+
+  <div class="relative z-10 max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-4xl font-bold mb-2 text-foreground">Admin Dashboard</h1>
+      <p class="text-muted-foreground">ICC Movie Festival Control Panel</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <!-- Current Status -->
+      <div class="p-6 bg-card border border-border rounded-lg">
+        <h2 class="text-xl font-semibold mb-4 text-foreground">Current Status</h2>
+        <div class="space-y-4">
+          <div class="flex items-center gap-3">
+            <div
+              class="w-3 h-3 rounded-full"
+              [class]="currentView === 'idle' ? 'bg-muted' : 'bg-primary'"
+            ></div>
+            <span class="text-muted-foreground">
+              {{ currentView === 'idle' ? 'Screening in Progress' : 'Rating Period' }}
+            </span>
+          </div>
+          <div class="text-2xl font-bold text-foreground">
+            {{ currentMovie ? currentMovie.title : 'No movie selected' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="p-6 bg-card border border-border rounded-lg">
+        <h2 class="text-xl font-semibold mb-4 text-foreground">Quick Actions</h2>
+        <div class="space-y-3">
+          <!-- Idle Button -->
+          <button
+            (click)="setIdle()"
+            class="w-full flex items-center gap-2 rounded-md p-3 transition-colors justify-start"
+            [class]="currentView === 'idle' 
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+              : 'border border-input bg-background hover:bg-muted/50'"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pause">
+              <rect x="6" y="4" width="4" height="16"></rect>
+              <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+            Show Idle Screen
+          </button>
+
+          <!-- Rating Period Button -->
+          <button
+            (click)="startRatingPeriod()"
+            class="w-full flex items-center gap-2 rounded-md p-3 transition-colors justify-start"
+            [class]="currentView === 'rating' 
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+              : 'border border-input bg-background hover:bg-muted/50'"
+            [disabled]="!currentMovie"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Start Rating Period
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Movie Queue - This should span full width -->
+    <div class="p-6 bg-card border border-border rounded-lg">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-semibold text-foreground">Movie Queue</h2>
+
+        <button
+          (click)="loadMovies()"
+          class="text-sm text-primary hover:underline flex items-center gap-1 disabled:opacity-50"
+          [disabled]="isLoading"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw" [class.animate-spin]="isLoading">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+            <path d="M21 3v5h-5"></path>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+            <path d="M3 21v-5h5"></path>
+          </svg>
+          {{ isLoading ? 'Loading...' : 'Refresh' }}
+        </button>
+      </div>
+
+      <div *ngIf="isLoading" class="flex items-center justify-center py-12">
+        <div class="text-center text-muted-foreground">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-2 h-8 w-8 mx-auto mb-4 animate-spin">
+            <path d="M21 12a9 9 0 11-6.219-8.56"></path>
+          </svg>
+          <p>Loading movies...</p>
+        </div>
+      </div>
+
+      <div *ngIf="!isLoading" class="space-y-2">
+        <div
+          *ngFor="let movie of movies"
+          class="flex items-center justify-between p-4 rounded-lg border transition-colors"
+          [ngClass]="movie.id === currentMovie?.id 
+            ? 'border-primary bg-primary/10' 
+            : 'border-border hover:bg-muted/50'"
+        >
+          <div class="flex items-center gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-film text-muted-foreground">
+              <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+              <path d="M7 3v18"></path>
+              <path d="M3 7.5h4"></path>
+              <path d="M3 12h18"></path>
+              <path d="M3 16.5h4"></path>
+              <path d="M17 3v18"></path>
+              <path d="M17 7.5h4"></path>
+              <path d="M17 16.5h4"></path>
+            </svg>
+            <span class="font-medium text-foreground">{{ movie.title }}</span>
+
+            <span
+              *ngIf="movie.id === currentMovie?.id"
+              class="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
+            >
+              Current
+            </span>
+          </div>
+
+          <button
+            (click)="selectMovie(movie.id)"
+            class="border border-input rounded-md px-4 py-2 text-sm hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            [disabled]="movie.id === currentMovie?.id"
+          >
+            {{ movie.id === currentMovie?.id ? 'Selected' : 'Select' }}
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="!isLoading && movies.length === 0" class="flex items-center justify-center py-12">
+        <div class="text-center text-muted-foreground">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-film h-12 w-12 mx-auto mb-4 opacity-50">
+            <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+            <path d="M7 3v18"></path>
+            <path d="M3 7.5h4"></path>
+            <path d="M3 12h18"></path>
+            <path d="M3 16.5h4"></path>
+            <path d="M17 3v18"></path>
+            <path d="M17 7.5h4"></path>
+            <path d="M17 16.5h4"></path>
+          </svg>
+          <p>No movies available. Please add movies through the backend.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
