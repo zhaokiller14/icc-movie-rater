@@ -12,6 +12,16 @@ export interface RatingData {
   userCode: string;
 }
 
+export interface MovieWithAverage extends Movie {
+  average?: number;
+  ratingCount?: number;
+}
+
+export interface AverageResponse {
+  movieId: number;
+  average: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -43,5 +53,8 @@ export class ApiService {
   }
   setIdle(): Observable<any> {
     return this.http.post(`${this.baseUrl}/admin/idle`, {});
+  }
+  getNumberOfRatingsForMovie(movieId: number): Observable<number> {
+    return this.http.get<number>(`${this.baseUrl}/ratings/number/${movieId}`);
   }
 }

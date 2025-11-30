@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Post, Body, Param, UsePipes, ValidationPipe, Get } from '@nestjs/common';
 import { RatingsService } from './ratings.service';
 import { CreateRatingDto } from './dto/create-rating.dto';
 import { UsersService } from '../users/users.service';
@@ -20,5 +20,9 @@ export class RatingsController {
     const average = await this.ratingsService.getAverage(movieId);
     this.eventsGateway.broadcastRatingUpdate(movieId, average);
     return rating;
+  }
+  @Get('number/:movieId')
+  async getNumberOfRatingsForMovie(@Param('movieId') movieId: number) {
+    return this.ratingsService.getNumberOfRatingsForMovie(movieId);
   }
 }

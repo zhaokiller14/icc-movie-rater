@@ -18,8 +18,8 @@ export class RatingComponent implements OnInit, OnDestroy {
   hoveredRating: number = 0;
   currentMovie: Movie | null = null;
   isSubmitting: boolean = false;
-
-  // bound to the input in the template
+  hasSubmitted: boolean = false;
+  ratingCount: number = 0;
   userCode: string = '';
 
   constructor(
@@ -28,39 +28,64 @@ export class RatingComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute
   ) {}
 
-ngOnInit(): void {
-  this.route.queryParams.subscribe(params => {
-    const codeFromUrl = params['code'];
-    if (codeFromUrl) {
-      this.userCode = codeFromUrl;
-    }
-  });
+  ngOnInit(): void {
+    this.route.queryParams.subscribe(params => {
+      const codeFromUrl = params['code'];
+      if (codeFromUrl) {
+        this.userCode = codeFromUrl;
+      }
+    });
 
-  this.socketService.connect();
+    this.socketService.connect();
 
-  this.socketService.onNewMovie(() => this.loadCurrentMovie());
-  this.socketService.onIdle(() => {
-    this.rating = 0;
-    this.hoveredRating = 0;
-    this.currentMovie = null;
-  });
+    this.socketService.onNewMovie(() => {
+      this.loadCurrentMovie();
+      this.resetSubmissionState();
+    });
+    
+    this.socketService.onIdle(() => {
+      this.rating = 0;
+      this.hoveredRating = 0;
+      this.currentMovie = null;
+      this.resetSubmissionState();
+    });
 
-  this.loadCurrentMovie();
-}
-
+    this.loadCurrentMovie();
+  }
 
   ngOnDestroy(): void {
     this.socketService.disconnect();
+  }
+
+  private resetSubmissionState(): void {
+    this.hasSubmitted = false;
+    this.ratingCount = 0;
   }
 
   private loadCurrentMovie(): void {
     this.apiService.getCurrentMovie().subscribe({
       next: (movie: Movie) => {
         this.currentMovie = movie;
+        if (movie) {
+          this.loadRatingCount(movie.id);
+        }
       },
       error: (error) => {
         console.error('Error loading current movie:', error);
         this.currentMovie = null;
+        this.ratingCount = 0;
+      }
+    });
+  }
+
+  private loadRatingCount(movieId: number): void {
+    this.apiService.getNumberOfRatingsForMovie(movieId).subscribe({
+      next: (count: number) => {
+        this.ratingCount = count;
+      },
+      error: (error) => {
+        console.error('Error loading rating count:', error);
+        this.ratingCount = 0;
       }
     });
   }
@@ -73,18 +98,17 @@ ngOnInit(): void {
         userCode: this.userCode
       };
 
-      // Use the current movie's id instead of hardcoded 0
       this.apiService.submitRating(this.currentMovie.id, ratingData).subscribe({
         next: () => {
           console.log(`Rating ${this.rating} submitted successfully for movie ${this.currentMovie?.title}`);
-          this.rating = 0; // Clear the rating after successful submission
-          this.hoveredRating = 0;
+          this.hasSubmitted = true;
           this.isSubmitting = false;
+          // Update the rating count after submission
+          this.loadRatingCount(this.currentMovie!.id);
         },
         error: (error) => {
           console.error('Failed to submit rating:', error);
           this.isSubmitting = false;
-          // Optionally show an error message to the user
         }
       });
     } else {
@@ -120,7 +144,6 @@ ngOnInit(): void {
     return 'empty';
   }
 
-  // if you want to set code programmatically:
   setUserCode(code: string): void {
     this.userCode = code;
   }

@@ -24,4 +24,5 @@ export class AdminService {
   async getAverages(): Promise<{ movieId: number; average: number }[]> {
     return this.ratingsService.getAllAverages();
   }
+  
 }

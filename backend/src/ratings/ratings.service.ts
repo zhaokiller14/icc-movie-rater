@@ -86,4 +86,8 @@ async getMoviesWithRatingCounts(): Promise<{ movieId: number; ratingCount: numbe
 async clearAllRatings(): Promise<void> {
   await this.ratingRepo.delete({});
 }
+
+async getNumberOfRatingsForMovie(movieId: number): Promise<number> {
+  return this.ratingRepo.count({ where: { movie: { id: movieId } } });
+}
 }
