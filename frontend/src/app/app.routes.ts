@@ -3,12 +3,10 @@ import { RouterModule, Routes } from '@angular/router';
 import { WelcomeComponent } from './welcome/welcome.component';
 import { RatingComponent } from './rating/rating.component';
 import { AdminComponent } from './admin/admin.component';
-import { IdleComponent } from './idle/idle.component';
 export const routes: Routes = [
   { path: '', component: WelcomeComponent },
   { path: 'rating', component: RatingComponent },
   { path: 'admin', component: AdminComponent },
-  { path: 'idle', component: IdleComponent },
   { path: '**', redirectTo: '' }
 ];
 

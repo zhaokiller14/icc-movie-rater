@@ -1,0 +1,5 @@
+{
+  "runtime": "node", 
+  "version": "18",
+  "startCommand": "npx serve -s dist/frontend -l 80"
+}

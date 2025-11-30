@@ -50,7 +50,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   );
 
 ngOnInit(): void {
-    this.socketService.connect(); // Make sure to connect first!
+    this.socketService.connect();
     this.loadMovies();
     this.loadCurrentMovie();
     this.setupSocketListeners();

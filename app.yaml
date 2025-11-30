@@ -1,0 +1,50 @@
+name: ICC-app
+services:
+- name: frontend
+  source_dir: /frontend
+  github:
+    repo: zhaokiller14/icc-movie-rater
+    branch: main
+  build_command: |
+    npm install
+    npm run build --prod
+  run_command: nginx -g 'daemon off;'
+  environment_slug: static
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  routes:
+  - path: /
+  envs:
+  - key: API_URL
+    value: https://icc-movie-rater.ondigitalocean.app
+    scope: RUN_AND_BUILD_TIME
+
+- name: backend
+  source_dir: /backend
+  github:
+    repo: zhaokiller14/icc-movie-rater
+    branch: main
+  build_command: |
+    npm install
+    npm run build
+  run_command: npm run start:prod
+  environment_slug: node-js
+  instance_count: 1
+  instance_size_slug: basic-xs
+  http_port: 3000
+  routes:
+  - path: /api
+  - path: /socket.io
+  envs:
+  - key: NODE_ENV
+    value: production
+    scope: RUN_AND_BUILD_TIME
+  - key: PORT
+    value: "3000"
+    scope: RUN_AND_BUILD_TIME
+  - key: DATABASE_URL
+    value: ${DATABASE_URL}
+    scope: RUN_AND_BUILD_TIME
+  - key: FRONTEND_URL
+    value: https://icc-movie-rater.ondigitalocean.app
+    scope: RUN_AND_BUILD_TIME

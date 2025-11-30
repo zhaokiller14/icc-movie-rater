@@ -25,6 +25,7 @@ export class RatingComponent implements OnInit, OnDestroy {
   hasAlreadyRated = signal(false); // New signal to track if user already rated
   ratingCount = signal(0);
   userCode = signal('');
+  currentView = signal<'idle' | 'rating'>('idle');
 
   private routeParams!: () => Params;
   private socketService = inject(SocketService);
@@ -53,12 +54,14 @@ export class RatingComponent implements OnInit, OnDestroy {
   private setupSocketListeners(): void {
     // Listen for new movie selections
     this.socketService.onNewMovie(() => {
+      this.currentView.set('rating');
       this.loadCurrentMovie();
       this.resetSubmissionState();
     });
     
     // Listen for idle state
     this.socketService.onIdle(() => {
+      this.currentView.set('idle');
       this.rating.set(0);
       this.hoveredRating.set(0);
       this.currentMovie.set(null);
