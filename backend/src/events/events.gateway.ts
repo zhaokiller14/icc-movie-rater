@@ -17,4 +17,9 @@ export class EventsGateway {
   broadcastRatingUpdate(movieId: number, average: number) {
     this.server.emit('ratingUpdate', { movieId, average });
   }
+  broadcastRatingCountUpdate(movieId: number, ratingCount: number) {
+  this.server.emit('ratingCountUpdate', { movieId, ratingCount });
 }
+  broadcastRatingClear() {
+    this.server.emit('ratingClear');
+  }}

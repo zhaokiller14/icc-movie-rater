@@ -41,7 +41,14 @@ export class SocketService {
       });
     }
   }
-
+  onRatingCountUpdate(callback: (movieId: number, ratingCount: number) => void): void {
+    if (this.socket) {
+      this.socket.on('ratingCountUpdate', (data: { movieId: number; ratingCount: number }) => {
+        callback(data.movieId, data.ratingCount);
+      });
+    }
+  }
+ 
   getSocket(): Socket | null {
     return this.socket;
   }

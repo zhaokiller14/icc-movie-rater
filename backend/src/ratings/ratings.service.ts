@@ -4,25 +4,48 @@ import { DataSource, Repository } from 'typeorm';
 import { Rating } from './entities/rating.entity';
 import { CreateRatingDto } from './dto/create-rating.dto';
 import { Movie } from '../movies/entities/movie.entity';
+import { EventsGateway } from 'src/events/events.gateway';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class RatingsService {
   constructor(
     @InjectRepository(Rating)
     private ratingRepo: Repository<Rating>,
+    private usersService: UsersService,
     private dataSource: DataSource, // For queries
+    private eventsGateway: EventsGateway
   ) {}
 
-  async create(movieId: number, createRatingDto: CreateRatingDto): Promise<Rating> {
+  async create(movieId: number, createRatingDto: CreateRatingDto): Promise<Rating | null> {
     const movie = await this.dataSource.getRepository(Movie).findOneBy({ id: movieId });
     if (!movie) {
       throw new BadRequestException('Movie not found');
     }
-    const rating = this.ratingRepo.create({
-      ...createRatingDto,
-      movie,
+
+    const existingRating = await this.ratingRepo.findOne({
+      where: {
+        movie: { id: movieId },
+        userCode: createRatingDto.userCode
+      }
     });
-    return this.ratingRepo.save(rating);
+
+    if (existingRating) {
+      throw new BadRequestException('You have already rated this movie');
+    }
+    else {
+      const rating = this.ratingRepo.create({
+        ...createRatingDto,
+        movie,
+    });
+      const savedRating = await this.ratingRepo.save(rating);
+      // Broadcast the rating update event
+      const average = await this.getAverage(movieId);
+      this.eventsGateway.broadcastRatingUpdate(movieId, average);
+      const ratingCount = await this.getNumberOfRatingsForMovie(movieId);
+      this.eventsGateway.broadcastRatingCountUpdate(movieId, ratingCount);
+      return savedRating;
+    }
   }
 
   async getAverage(movieId: number): Promise<number> {
@@ -84,7 +107,8 @@ async getMoviesWithRatingCounts(): Promise<{ movieId: number; ratingCount: numbe
 }
 
 async clearAllRatings(): Promise<void> {
-  await this.ratingRepo.delete({});
+  await this.ratingRepo.clear();
+  await this.usersService.clearRatedMovies();
 }
 
 async getNumberOfRatingsForMovie(movieId: number): Promise<number> {

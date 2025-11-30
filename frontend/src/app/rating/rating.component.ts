@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -6,7 +6,7 @@ import { ApiService, Movie, RatingData } from '../services/api.service';
 import { SocketService } from '../services/socket.service';
 import { ActivatedRoute, Params } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { switchMap, catchError, of } from 'rxjs';
+import { catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-rating',
@@ -22,16 +22,15 @@ export class RatingComponent implements OnInit, OnDestroy {
   currentMovie = signal<Movie | null>(null);
   isSubmitting = signal(false);
   hasSubmitted = signal(false);
+  hasAlreadyRated = signal(false); // New signal to track if user already rated
   ratingCount = signal(0);
   userCode = signal('');
 
-private routeParams!: () => Params;
+  private routeParams!: () => Params;
+  private socketService = inject(SocketService);
+  private apiService = inject(ApiService);
 
-  constructor(
-    private apiService: ApiService,
-    private socketService: SocketService,
-    private route: ActivatedRoute
-  ) {
+  constructor(private route: ActivatedRoute) {
     this.routeParams = toSignal(this.route.queryParams, { initialValue: {} as Params });
   }
 
@@ -43,19 +42,7 @@ private routeParams!: () => Params;
     }
 
     this.socketService.connect();
-
-    this.socketService.onNewMovie(() => {
-      this.loadCurrentMovie();
-      this.resetSubmissionState();
-    });
-    
-    this.socketService.onIdle(() => {
-      this.rating.set(0);
-      this.hoveredRating.set(0);
-      this.currentMovie.set(null);
-      this.resetSubmissionState();
-    });
-
+    this.setupSocketListeners();
     this.loadCurrentMovie();
   }
 
@@ -63,9 +50,33 @@ private routeParams!: () => Params;
     this.socketService.disconnect();
   }
 
+  private setupSocketListeners(): void {
+    // Listen for new movie selections
+    this.socketService.onNewMovie(() => {
+      this.loadCurrentMovie();
+      this.resetSubmissionState();
+    });
+    
+    // Listen for idle state
+    this.socketService.onIdle(() => {
+      this.rating.set(0);
+      this.hoveredRating.set(0);
+      this.currentMovie.set(null);
+      this.resetSubmissionState();
+    });
+
+    // Listen for rating count updates
+    this.socketService.onRatingCountUpdate((movieId: number, ratingCount: number) => {
+      this.handleRatingCountUpdate(movieId, ratingCount);
+    });
+  }
+
   private resetSubmissionState(): void {
     this.hasSubmitted.set(false);
+    this.hasAlreadyRated.set(false);
     this.ratingCount.set(0);
+    this.rating.set(0);
+    this.hoveredRating.set(0);
   }
 
   private loadCurrentMovie(): void {
@@ -84,6 +95,7 @@ private routeParams!: () => Params;
     });
   }
 
+
   private loadRatingCount(movieId: number): void {
     this.apiService.getNumberOfRatingsForMovie(movieId).subscribe({
       next: (count: number) => {
@@ -96,10 +108,22 @@ private routeParams!: () => Params;
     });
   }
 
+  private handleRatingCountUpdate(movieId: number, ratingCount: number): void {
+    const currentMovie = this.currentMovie();
+    if (currentMovie && currentMovie.id === movieId) {
+      this.ratingCount.set(ratingCount);
+    }
+  }
+
   handleSubmit(): void {
     const currentRating = this.rating();
     const currentUserCode = this.userCode();
     const currentMovie = this.currentMovie();
+
+    if (this.hasAlreadyRated()) {
+      alert('You have already rated this movie.');
+      return;
+    }
 
     if (currentRating > 0 && currentUserCode && currentMovie) {
       this.isSubmitting.set(true);
@@ -112,12 +136,21 @@ private routeParams!: () => Params;
         next: () => {
           console.log(`Rating ${currentRating} submitted successfully for movie ${currentMovie.title}`);
           this.hasSubmitted.set(true);
+          this.hasAlreadyRated.set(true);
           this.isSubmitting.set(false);
-          this.loadRatingCount(currentMovie.id);
         },
         error: (error) => {
           console.error('Failed to submit rating:', error);
           this.isSubmitting.set(false);
+          
+          // Handle specific error cases
+          if (error.status === 400 && error.error?.message?.includes('already rated')) {
+            this.hasAlreadyRated.set(true);
+            this.hasSubmitted.set(true);
+            alert('You have already rated this movie.');
+          } else {
+            alert('Failed to submit rating. Please try again.');
+          }
         }
       });
     } else {
@@ -132,18 +165,28 @@ private routeParams!: () => Params;
   }
 
   setRating(value: number): void {
-    this.rating.set(value);
+    if (!this.hasAlreadyRated()) {
+      this.rating.set(value);
+    }
   }
 
   setHoveredRating(value: number): void {
-    this.hoveredRating.set(value);
+    if (!this.hasAlreadyRated()) {
+      this.hoveredRating.set(value);
+    }
   }
 
   clearHoveredRating(): void {
-    this.hoveredRating.set(0);
+    if (!this.hasAlreadyRated()) {
+      this.hoveredRating.set(0);
+    }
   }
 
   getStarState(starIndex: number): 'full' | 'half' | 'empty' {
+    if (this.hasAlreadyRated()) {
+      return 'empty'; // Don't show hover effects if already rated
+    }
+    
     const effectiveRating = this.hoveredRating() || this.rating();
     if (effectiveRating >= starIndex) {
       return 'full';

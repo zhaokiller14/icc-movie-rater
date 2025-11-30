@@ -1,8 +1,8 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ApiService, Movie, MovieWithAverage, AverageResponse } from '../services/api.service';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of, tap } from 'rxjs';
+import { SocketService } from '../services/socket.service';
+import { catchError, of, Subject, tap } from 'rxjs';
 
 @Component({
   selector: 'app-admin',
@@ -11,8 +11,10 @@ import { catchError, of, tap } from 'rxjs';
   standalone: true,
   imports: [CommonModule]
 })
-export class AdminComponent implements OnInit {
+export class AdminComponent implements OnInit, OnDestroy {
   private apiService = inject(ApiService);
+  private socketService = inject(SocketService);
+  private destroy$ = new Subject<void>();
 
   // Signals for state management
   movies = signal<MovieWithAverage[]>([]);
@@ -47,9 +49,87 @@ export class AdminComponent implements OnInit {
     this.currentMovie() ? this.currentMovie()!.title : 'No movie selected'
   );
 
-  ngOnInit(): void {
+ngOnInit(): void {
+    this.socketService.connect(); // Make sure to connect first!
     this.loadMovies();
     this.loadCurrentMovie();
+    this.setupSocketListeners();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.socketService.disconnect();
+  }
+
+  private setupSocketListeners(): void {
+    console.log('Setting up socket listeners for admin...');
+
+    // Listen for rating average updates
+    this.socketService.onRatingUpdate((movieId: number, average: number) => {
+      console.log('Admin received ratingUpdate:', movieId, average);
+      this.handleRatingUpdate(movieId, average);
+    });
+
+    // Listen for rating count updates
+    this.socketService.onRatingCountUpdate((movieId: number, ratingCount: number) => {
+      console.log('Admin received ratingCountUpdate:', movieId, ratingCount);
+      this.handleRatingCountUpdate(movieId, ratingCount);
+    });
+
+    // Listen for new movie selections
+    this.socketService.onNewMovie(() => {
+      console.log('Admin received newMovie event');
+      this.loadCurrentMovie();
+    });
+
+    // Listen for idle state
+    this.socketService.onIdle(() => {
+      console.log('Admin received idle event');
+      this.currentView.set('idle');
+    });
+  }
+  private handleRatingUpdate(movieId: number, average: number): void {
+    console.log(`Admin: Real-time average update for movie ${movieId}: ${average}`);
+    
+    // Update movies array with new average
+    this.movies.update(currentMovies => 
+      currentMovies.map(movie => 
+        movie.id === movieId ? { ...movie, average } : movie
+      )
+    );
+
+    // Update current movie if it matches
+    const currentMovieValue = this.currentMovie();
+    if (currentMovieValue?.id === movieId) {
+      this.currentMovie.update(movie => movie ? { ...movie, average } : null);
+      console.log(`Admin: Updated current movie average to ${average}`);
+    }
+  }
+
+  private handleRatingCountUpdate(movieId: number, ratingCount: number): void {
+    console.log(`Admin: Real-time count update for movie ${movieId}: ${ratingCount} ratings`);
+    
+    // Update movies array with new rating count
+    this.movies.update(currentMovies => 
+      currentMovies.map(movie => 
+        movie.id === movieId ? { ...movie, ratingCount } : movie
+      )
+    );
+
+    // Update current movie if it matches
+    const currentMovieValue = this.currentMovie();
+    if (currentMovieValue?.id === movieId) {
+      this.currentMovie.update(movie => movie ? { ...movie, ratingCount } : null);
+      console.log(`Admin: Updated current movie rating count to ${ratingCount}`);
+    }
+
+    // Remove from loading set if it was loading
+    this.loadingRatings.update(loadingSet => {
+      const newSet = new Set(loadingSet);
+      newSet.delete(movieId);
+      return newSet;
+    });
   }
 
   loadMovies(): void {

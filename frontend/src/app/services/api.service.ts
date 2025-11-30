@@ -57,4 +57,5 @@ export class ApiService {
   getNumberOfRatingsForMovie(movieId: number): Observable<number> {
     return this.http.get<number>(`${this.baseUrl}/ratings/number/${movieId}`);
   }
+  
 }

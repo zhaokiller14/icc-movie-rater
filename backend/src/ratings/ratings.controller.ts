@@ -11,18 +11,24 @@ export class RatingsController {
     private readonly usersService: UsersService,
     private readonly eventsGateway: EventsGateway,
   ) {}
-
+  @Post('clear')
+  async clearRatings() {
+    const result = await this.ratingsService.clearAllRatings();
+    this.eventsGateway.broadcastRatingClear();
+    return result;
+  }
   @Post(':movieId')
   @UsePipes(new ValidationPipe({ transform: true }))
   async create(@Param('movieId') movieId: number, @Body() createRatingDto: CreateRatingDto) {
     await this.usersService.validateCode(createRatingDto.userCode, movieId);
     const rating = await this.ratingsService.create(movieId, createRatingDto);
-    const average = await this.ratingsService.getAverage(movieId);
-    this.eventsGateway.broadcastRatingUpdate(movieId, average);
+    await this.usersService.markMovieAsRated(createRatingDto.userCode, movieId);
     return rating;
   }
+
   @Get('number/:movieId')
   async getNumberOfRatingsForMovie(@Param('movieId') movieId: number) {
     return this.ratingsService.getNumberOfRatingsForMovie(movieId);
   }
+
 }

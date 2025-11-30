@@ -24,17 +24,26 @@ export class UsersService {
     return codes;
   }
 
-  async validateCode(code: string, movieId: number): Promise<void> {
-    const userCode = await this.userCodeRepo.findOne({ where: { code } });
-    if (!userCode) {
-      throw new BadRequestException('Invalid code');
-    }
-    if (userCode.ratedMovies.includes(movieId)) {
-      throw new BadRequestException('Already rated this movie');
-    }
+async validateCode(code: string, movieId: number): Promise<void> {
+  const userCode = await this.userCodeRepo.findOne({ where: { code } });
+  if (!userCode) {
+    throw new BadRequestException('Invalid code');
+  }
+  
+  // Check if user has already rated this movie
+  if (userCode.ratedMovies.includes(movieId)) {
+    throw new BadRequestException('Already rated this movie');
+  }
+}
+
+// Add this method to mark a movie as rated after successful rating creation
+async markMovieAsRated(code: string, movieId: number): Promise<void> {
+  const userCode = await this.userCodeRepo.findOne({ where: { code } });
+  if (userCode && !userCode.ratedMovies.includes(movieId)) {
     userCode.ratedMovies.push(movieId);
     await this.userCodeRepo.save(userCode);
   }
+}
   async getTotalCodes(): Promise<number> {
     return this.userCodeRepo.count();
   }
@@ -67,5 +76,12 @@ async getUsedCodesList(): Promise<UserCode[]> {
       throw new BadRequestException('Invalid code');
     }
     return userCode.ratedMovies || [];
+  }
+  async clearRatedMovies(): Promise<void> {
+    const allCodes = await this.userCodeRepo.find();
+    for (const code of allCodes) {
+      code.ratedMovies = [];
+      await this.userCodeRepo.save(code);
+    }
   }
 }

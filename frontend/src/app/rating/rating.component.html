@@ -6,7 +6,7 @@
     <div *ngIf="currentMovie() && !hasSubmitted(); else noRatingInterface" class="bg-card border border-border rounded-2xl p-12 shadow-2xl">
       <div class="text-center mb-8">
         <div class="w-20 h-20 mx-auto mb-4 bg-background rounded-full flex items-center justify-center border border-border">
-          <span class="text-muted-foreground text-xs">ICC</span>
+          <img src="/LogoType@8x.png" alt="ICC logo" class="absolute w-20 h-20 object-contain"/>
         </div>
         
         <h2 class="text-3xl font-bold mb-2 text-foreground">
@@ -72,15 +72,16 @@
       </div>
 
       <!-- Submit button -->
-      <button (click)="handleSubmit()"
-              [disabled]="rating() === 0 || isSubmitting()"
-              class="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
-        <span *ngIf="isSubmitting" class="flex items-center justify-center">
-          <span class="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></span>
-          Submitting...
-        </span>
-        <span *ngIf="!isSubmitting">Submit Rating</span>
-      </button>
+<button (click)="handleSubmit()"
+        [disabled]="rating() === 0 || isSubmitting() || hasAlreadyRated()"
+        class="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
+  <span *ngIf="isSubmitting()" class="flex items-center justify-center">
+    <span class="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></span>
+    Submitting...
+  </span>
+  <span *ngIf="!isSubmitting() && !hasAlreadyRated()">Submit Rating</span>
+  <span *ngIf="!isSubmitting() && hasAlreadyRated()">Already Rated</span>
+</button>
     </div>
 
     <ng-template #noRatingInterface>
