@@ -4,9 +4,8 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "build": "ng build",
-    "build:prod": "ng build --prod",
-    "start": "ng serve",
+    "build": "ng build --configuration=production",
+    "start": "npx serve -s dist/frontend -l 8080",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

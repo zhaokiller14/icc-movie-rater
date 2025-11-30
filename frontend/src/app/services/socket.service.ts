@@ -1,15 +1,19 @@
 import { Injectable } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
+import { environment } from '../environment/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SocketService {
   private socket: Socket | null = null;
+  private baseUrl = environment.apiUrl;
 
   connect(): void {
     if (!this.socket) {
-      this.socket = io('http://localhost:3000');
+      this.socket = io(this.baseUrl, {
+        transports: ['websocket','polling'],
+      });
     }
   }
 
