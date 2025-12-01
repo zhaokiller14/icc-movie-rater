@@ -1,4 +1,4 @@
-name: Deploy Frontend
+name: Deploy Frontend to Azure
 
 on:
   push:
@@ -26,23 +26,33 @@ jobs:
         npm ci
         npm run build --configuration=production
         
-    - name: Create deployment package (without node_modules)
+        # Verify build output
+        if [ ! -f "dist/frontend/index.html" ] && [ ! -f "dist/browser/index.html" ]; then
+          echo "ERROR: No index.html found in dist/"
+          find . -name "index.html"
+          exit 1
+        fi
+        
+    - name: Create deployment package
       run: |
         cd frontend
-        # Remove node_modules if it exists
-        rm -rf node_modules
+        
+        # Remove unnecessary files
+        rm -rf node_modules .git
         
         # Create ZIP with only necessary files
         zip -r ../frontend-deploy.zip \
           package.json \
           startup.sh \
           dist/ \
-          nginx.conf \
-          server.js 2>/dev/null || true
+          nginx.conf
+        
+        # Check ZIP size
+        echo "ZIP file size: $(ls -lh ../frontend-deploy.zip | awk '{print $5}')"
           
     - name: Deploy to Azure
       uses: azure/webapps-deploy@v2
       with:
         app-name: 'icc-movie-rating-frontend'
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
-        package: frontend-deploy.zip
+        package: ../frontend-deploy.zip
