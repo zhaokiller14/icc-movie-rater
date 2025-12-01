@@ -4,12 +4,12 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // ENABLE CORS with proper configuration
+  // Get frontend URL - use exact Azure URL
+  const frontendUrl = 'https://icc-movie-rating.azurewebsites.net';
+  
+  // ENABLE CORS with exact URL
   app.enableCors({
-    origin: [
-      'https://icc-movie-rating-frontend.azurewebsites.net',
-      'http://localhost:4200'
-    ],
+    origin: frontendUrl,  // Single string, not array
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: [
@@ -17,18 +17,18 @@ async function bootstrap() {
       'Authorization',
       'X-Requested-With',
       'Accept',
-      'Origin',
-      'Access-Control-Allow-Headers'
+      'Origin'
     ],
     exposedHeaders: ['Authorization'],
     maxAge: 3600
   });
   
-  // Set global prefix - IMPORTANT!
+  // Set global prefix
   app.setGlobalPrefix('api');
   
-  const port = process.env.PORT || 3000;
+  // IMPORTANT: Use Azure's port (8080), not 3000
+  const port = process.env.PORT || 8080;
   await app.listen(port);
-  console.log(`Backend running on port ${port} with CORS enabled`);
+  console.log(`Backend running on port ${port} with CORS enabled for ${frontendUrl}`);
 }
 bootstrap();

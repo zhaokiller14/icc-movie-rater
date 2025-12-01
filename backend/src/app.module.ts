@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
@@ -8,6 +8,7 @@ import { RatingsModule } from './ratings/ratings.module';
 import { UsersModule } from './users/users.module';
 import { AdminModule } from './admin/admin.module';
 import { EventsGateway } from './events/events.gateway';
+import * as cors from 'cors';
 
 @Module({
   imports: [
@@ -29,4 +30,10 @@ import { EventsGateway } from './events/events.gateway';
   controllers: [AppController],
   providers: [AppService, EventsGateway],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(cors())
+      .forRoutes('*');  // Apply to all routes
+  }
+}
