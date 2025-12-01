@@ -58,5 +58,7 @@ export class ApiService {
   getNumberOfRatingsForMovie(movieId: number): Observable<number> {
     return this.http.get<number>(`${this.baseUrl}/ratings/number/${movieId}`);
   }
-  
+  isAdmin(code: string): Observable<{ isAdmin: boolean }> {
+    return this.http.get<{ isAdmin: boolean }>(`${this.baseUrl}/users/is-admin/${code}`);
+  }
 }

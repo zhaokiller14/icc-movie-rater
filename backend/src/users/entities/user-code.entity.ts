@@ -10,4 +10,8 @@ export class UserCode {
 
   @Column('simple-array', { nullable: true }) // Array of movie IDs rated
   ratedMovies: number[];
+
+
+  @Column({ default: false })
+  isAdmin: boolean;
 }

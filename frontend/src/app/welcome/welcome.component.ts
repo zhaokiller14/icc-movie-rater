@@ -1,6 +1,8 @@
-// welcome.component.ts
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
+import { ApiService } from '../services/api.service';
+import { catchError, tap } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 @Component({
   selector: 'app-welcome',
@@ -10,13 +12,30 @@ import { Router } from '@angular/router';
 export class WelcomeComponent {
   code: string = '';
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private apiService: ApiService) {
+    localStorage.removeItem('userCode');
+  }
 
   handleSubmit(event: Event): void {
     event.preventDefault();
     if (this.code.trim().length === 3) {
-      this.router.navigate(['/rating'], { queryParams: { code: this.code } });
-
+      this.apiService.isAdmin(this.code).pipe(
+        tap(response => {
+          localStorage.setItem('userCode', this.code);
+          console.log(response);
+          if (response) {
+            this.router.navigate(['/admin']);
+          } else {
+            this.router.navigate(['/rating'], { queryParams: { code: this.code } });
+          }
+        }),
+        catchError(error => {
+          console.error('Error checking admin:', error);
+          localStorage.setItem('userCode', this.code);
+          this.router.navigate(['/rating'], { queryParams: { code: this.code } });
+          return of(null);
+        })
+      ).subscribe();
     }
   }
 

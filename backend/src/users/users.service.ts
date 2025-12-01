@@ -84,4 +84,10 @@ async getUsedCodesList(): Promise<UserCode[]> {
       await this.userCodeRepo.save(code);
     }
   }
+  async isAdmin(code: string): Promise<boolean> {
+    const userCode = await this.userCodeRepo.findOne({ where: { code } });
+    return userCode ? userCode.isAdmin : false;
+  }
+
+
 }

@@ -27,4 +27,9 @@ async getUsedCodesCount(): Promise<number> {
 async getUsedCodesList(): Promise<UserCode[]> {
   return this.usersService.getUsedCodesList();
 }
+
+@Get('is-admin/:code')
+async isAdmin(@Param('code') code: string): Promise<boolean> {
+  return this.usersService.isAdmin(code);
+}
 }

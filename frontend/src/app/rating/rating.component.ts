@@ -4,9 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { ApiService, Movie, RatingData } from '../services/api.service';
 import { SocketService } from '../services/socket.service';
-import { ActivatedRoute, Params } from '@angular/router';
+import { ActivatedRoute, Params, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
+import { HostListener } from '@angular/core';
 
 @Component({
   selector: 'app-rating',
@@ -31,16 +32,32 @@ export class RatingComponent implements OnInit, OnDestroy {
   private socketService = inject(SocketService);
   private apiService = inject(ApiService);
 
-  constructor(private route: ActivatedRoute) {
+  constructor(private route: ActivatedRoute, private router: Router) {
     this.routeParams = toSignal(this.route.queryParams, { initialValue: {} as Params });
   }
 
-  ngOnInit(): void {
-    // Set user code from URL
-    const codeFromUrl = this.routeParams()['code'];
-    if (codeFromUrl) {
-      this.userCode.set(codeFromUrl);
+@HostListener('window:popstate', ['$event'])
+  onPopState(event: PopStateEvent) {
+    const code = localStorage.getItem('userCode');
+    if (code) {
+      // Prevent back navigation by pushing the current state
+      history.pushState(null, '', `/rating?code=${code}`);
+      this.router.navigate(['/rating'], { queryParams: { code } });
+    } else {
+      this.router.navigate(['/']);
     }
+  }
+
+  ngOnInit(): void {
+    const code = localStorage.getItem('userCode');
+    if (!code) {
+      this.router.navigate(['/']);
+      return;
+    }
+    this.userCode.set(code);
+
+    // Push current state to prevent back navigation
+    history.pushState(null, '', `/rating?code=${code}`);
 
     this.socketService.connect();
     this.setupSocketListeners();
