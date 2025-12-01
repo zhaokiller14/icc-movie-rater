@@ -3,10 +3,7 @@ import { Server } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: [
-      'https://icc-movie-rating.azurewebsites.net',
-      'http://localhost:4200'  // for local development
-    ],
+    origin: 'https://icc-movie-rating.azurewebsites.net',
     credentials: true
   },
   transports: ['websocket', 'polling'],  // Important for Azure
