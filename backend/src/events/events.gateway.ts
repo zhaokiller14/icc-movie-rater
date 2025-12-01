@@ -1,7 +1,17 @@
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({
+  cors: {
+    origin: [
+      'https://icc-movie-rating-frontend.azurewebsites.net',
+      'http://localhost:4200'  // for local development
+    ],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],  // Important for Azure
+  allowEIO3: true  // For Socket.io v2/v3 compatibility
+})
 export class EventsGateway {
   @WebSocketServer()
   server: Server;
