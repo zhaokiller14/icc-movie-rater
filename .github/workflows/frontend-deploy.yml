@@ -26,9 +26,23 @@ jobs:
         npm ci
         npm run build --configuration=production
         
+    - name: Create deployment package (without node_modules)
+      run: |
+        cd frontend
+        # Remove node_modules if it exists
+        rm -rf node_modules
+        
+        # Create ZIP with only necessary files
+        zip -r ../frontend-deploy.zip \
+          package.json \
+          startup.sh \
+          dist/ \
+          nginx.conf \
+          server.js 2>/dev/null || true
+          
     - name: Deploy to Azure
       uses: azure/webapps-deploy@v2
       with:
         app-name: 'icc-movie-rating-frontend'
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
-        package: './frontend'
+        package: frontend-deploy.zip
