@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 @WebSocketGateway({
   cors: {
     origin: [
-      'https://icc-movie-rating-frontend.azurewebsites.net',
+      'https://icc-movie-rating.azurewebsites.net',
       'http://localhost:4200'  // for local development
     ],
     credentials: true
