@@ -3,10 +3,9 @@ name: Deploy Frontend to Azure
 on:
   push:
     branches: [ main ]
-    paths: [
-      -'frontend/**'
-      -'.github/workflows/frontend-deploy.yml'
-      ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/**'
 
 jobs:
   build-and-deploy:
@@ -31,16 +30,33 @@ jobs:
         
         echo "✓ Build completed"
         echo "Build output structure:"
-        ls -la dist/frontend/browser/
+        find dist -type f -name "*.js" -o -name "*.html" -o -name "*.css" | head -20
         
     - name: Prepare deployment package
       run: |
         # Create deployment directory
         mkdir -p deploy_package
         
-        # Copy the built Angular app from dist/frontend/browser
-        echo "Copying built files from dist/frontend/browser..."
-        cp -r frontend/dist/frontend/browser/* deploy_package/
+        # Debug: Check what's in dist
+        echo "Checking dist structure..."
+        find frontend/dist -type f -name "index.html"
+        find frontend/dist -type d
+        
+        # Based on your build output, it's in dist/frontend/browser
+        if [ -f "frontend/dist/frontend/browser/index.html" ]; then
+          echo "Found Angular build in: frontend/dist/frontend/browser/"
+          cp -r frontend/dist/frontend/browser/* deploy_package/
+        elif [ -f "frontend/dist/browser/index.html" ]; then
+          echo "Found Angular build in: frontend/dist/browser/"
+          cp -r frontend/dist/browser/* deploy_package/
+        else
+          echo "ERROR: Could not find index.html in build output"
+          echo "Contents of dist directory:"
+          ls -la frontend/dist/
+          echo "Searching for index.html..."
+          find frontend/dist -name "index.html"
+          exit 1
+        fi
         
         # Copy configuration files
         cp frontend/startup.sh deploy_package/
@@ -49,11 +65,10 @@ jobs:
         # Make startup.sh executable
         chmod +x deploy_package/startup.sh
         
-        # Verify the package contains index.html
-        echo "Deployment package verification:"
+        # Verify the package
+        echo "✓ Deployment package prepared"
+        echo "Contents:"
         ls -la deploy_package/
-        echo ""
-        echo "Checking for index.html:"
         [ -f "deploy_package/index.html" ] && echo "✓ index.html found" || echo "✗ index.html missing"
         
     - name: Create ZIP package
@@ -62,10 +77,8 @@ jobs:
         zip -r ../frontend-deploy.zip .
         cd ..
         
-        echo "ZIP package created"
-        echo "ZIP file size: $(ls -lh frontend-deploy.zip | awk '{print $5}')"
-        echo "ZIP contents preview:"
-        unzip -l frontend-deploy.zip | head -20
+        echo "✓ ZIP package created"
+        echo "File size: $(ls -lh frontend-deploy.zip | awk '{print $5}')"
           
     - name: Deploy to Azure
       uses: azure/webapps-deploy@v2
