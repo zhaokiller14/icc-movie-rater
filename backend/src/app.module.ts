@@ -16,7 +16,6 @@ import { EventsGateway } from './events/events.gateway';
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'db.fsukddqcjnicfweemidl.supabase.co',
       url : process.env.DATABASE_URL,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
