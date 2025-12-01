@@ -3,7 +3,9 @@ name: Deploy Backend to Azure
 on:
   push:
     branches: [ main ]
-    paths: ['backend/**']
+    paths:
+      - 'backend/**'
+      - '.github/workflows/**'
 
 jobs:
   build-and-deploy:
