@@ -28,16 +28,16 @@ jobs:
         
         echo "✓ Build completed"
         echo "Build output structure:"
-        ls -la dist/browser/
+        ls -la dist/frontend/browser/
         
     - name: Prepare deployment package
       run: |
         # Create deployment directory
         mkdir -p deploy_package
         
-        # Copy the built Angular app from dist/browser
-        echo "Copying built files from dist/browser..."
-        cp -r frontend/dist/browser/* deploy_package/
+        # Copy the built Angular app from dist/frontend/browser
+        echo "Copying built files from dist/frontend/browser..."
+        cp -r frontend/dist/frontend/browser/* deploy_package/
         
         # Copy configuration files
         cp frontend/startup.sh deploy_package/
