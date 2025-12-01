@@ -1,4 +1,4 @@
-name: Deploy Frontend
+name: Deploy Frontend to Azure
 
 on:
   push:
@@ -6,14 +6,67 @@ on:
     paths: ['frontend/**']
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
     
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install and build frontend
+      run: |
+        cd frontend
+        npm ci
+        npm run build --configuration=production
+        
+        echo "✓ Build completed"
+        echo "Build output structure:"
+        ls -la dist/browser/
+        
+    - name: Prepare deployment package
+      run: |
+        # Create deployment directory
+        mkdir -p deploy_package
+        
+        # Copy the built Angular app from dist/browser
+        echo "Copying built files from dist/browser..."
+        cp -r frontend/dist/browser/* deploy_package/
+        
+        # Copy configuration files
+        cp frontend/startup.sh deploy_package/
+        cp frontend/nginx.conf deploy_package/
+        
+        # Make startup.sh executable
+        chmod +x deploy_package/startup.sh
+        
+        # Verify the package contains index.html
+        echo "Deployment package verification:"
+        ls -la deploy_package/
+        echo ""
+        echo "Checking for index.html:"
+        [ -f "deploy_package/index.html" ] && echo "✓ index.html found" || echo "✗ index.html missing"
+        
+    - name: Create ZIP package
+      run: |
+        cd deploy_package
+        zip -r ../frontend-deploy.zip .
+        cd ..
+        
+        echo "ZIP package created"
+        echo "ZIP file size: $(ls -lh frontend-deploy.zip | awk '{print $5}')"
+        echo "ZIP contents preview:"
+        unzip -l frontend-deploy.zip | head -20
+          
     - name: Deploy to Azure
       uses: azure/webapps-deploy@v2
       with:
         app-name: 'icc-movie-rating-frontend'
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
-        package: frontend
+        package: ./frontend-deploy.zip
