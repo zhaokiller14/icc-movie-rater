@@ -19,20 +19,26 @@ export class WelcomeComponent {
   handleSubmit(event: Event): void {
     event.preventDefault();
     if (this.code.trim().length === 3) {
+      this.apiService.isValidUserCode(this.code).pipe(
+        tap(response => {
+          if (response.isValid) {
+            localStorage.setItem('userCode', this.code);
+          }}
+          
+      )).subscribe();
       this.apiService.isAdmin(this.code).pipe(
         tap(response => {
-          localStorage.setItem('userCode', this.code);
           console.log(response);
           if (response) {
             this.router.navigate(['/admin']);
           } else {
-            this.router.navigate(['/rating'], { queryParams: { code: this.code } });
+            this.router.navigate(['/rating']);
           }
         }),
         catchError(error => {
           console.error('Error checking admin:', error);
           localStorage.setItem('userCode', this.code);
-          this.router.navigate(['/rating'], { queryParams: { code: this.code } });
+          this.router.navigate(['/rating']);
           return of(null);
         })
       ).subscribe();

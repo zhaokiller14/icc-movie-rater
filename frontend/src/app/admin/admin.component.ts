@@ -78,8 +78,8 @@ ngOnInit(): void {
     });
 
     // Listen for new movie selections
-    this.socketService.onNewMovie(() => {
-      console.log('Admin received newMovie event');
+    this.socketService.onMovieSelected(() => {
+      console.log('Admin received movieSelected event');
       this.loadCurrentMovie();
     });
 
@@ -277,7 +277,7 @@ ngOnInit(): void {
     this.apiService.selectMovie(movieId).pipe(
       tap(() => {
         this.loadCurrentMovie();
-        this.currentView.set('idle');
+        this.setIdle();
       }),
       catchError(error => {
         console.error('Error setting next movie:', error);

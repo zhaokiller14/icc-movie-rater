@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { environment } from '../environment/environment.prod';
+import { Observable, of, throwError } from 'rxjs';
+import { catchError, map, tap } from 'rxjs/operators';
+import { environment } from '../environment/environment';
 export interface Movie {
   id: number;
   title: string;
@@ -60,4 +61,26 @@ export class ApiService {
   isAdmin(code: string): Observable<{ isAdmin: boolean }> {
     return this.http.get<{ isAdmin: boolean }>(`${this.baseUrl}/users/is-admin/${code}`);
   }
+  isValidUserCode(code: string): Observable<{ isValid: boolean }> {
+    return this.http.get<{ isValid: boolean }>(`${this.baseUrl}/users/is-valid/${code}`);
+  }
+
+  isRatingSessionActive() : Observable< {isActive : boolean}> {
+    return this.http.get<{ isActive:boolean}>(`${this.baseUrl}/admin/is-active/`);
+  }
+userHasRated(code: string, movieId: number): Observable<boolean> {
+  return this.http
+    .get<{ userRatedMovies: number[] }>(`${this.baseUrl}/users/rated-movies/${code}`)
+    .pipe(
+      tap(res => console.log('User rated movies:', res.userRatedMovies, 'includes movieId:', res.userRatedMovies.includes(movieId))),
+      
+      map(res => res.userRatedMovies?.includes(movieId) ?? false),
+      // NEVER silently return false on error!
+      catchError(err => {
+        console.error('Failed to check if user has rated:', err);
+        // Re-throw so the component knows it failed
+        return throwError(() => err);
+      })
+    );
+}
 }

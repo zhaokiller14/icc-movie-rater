@@ -24,9 +24,9 @@ export class SocketService {
     }
   }
 
-  onNewMovie(callback: (movieId: number) => void): void {
+  onMovieSelected(callback: (movieId: number) => void): void {
     if (this.socket) {
-      this.socket.on('newMovie', (data: { movieId: number }) => {
+      this.socket.on('movieSelected', (data: { movieId: number }) => {
         callback(data.movieId);
       });
     }
@@ -55,5 +55,13 @@ export class SocketService {
  
   getSocket(): Socket | null {
     return this.socket;
+  }
+
+  onStartRatingSession(callback: (movieId: number) => void): void {
+    if (this.socket) {
+      this.socket.on('startRatingSession', (data: { movieId: number }) => {
+        callback(data.movieId);
+      });
+    }
   }
 }

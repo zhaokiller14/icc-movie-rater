@@ -25,4 +25,9 @@ export class AdminController {
   async getAverages() {
     return this.adminService.getAverages();
   }
+  @Get('is-active')
+  async isRatingSessionActive() {
+    const isActive = await this.adminService.isRatingSessionActive();
+    return { isActive };
+  }
 }

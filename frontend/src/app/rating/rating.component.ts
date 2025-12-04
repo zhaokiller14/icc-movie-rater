@@ -4,10 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { ApiService, Movie, RatingData } from '../services/api.service';
 import { SocketService } from '../services/socket.service';
-import { ActivatedRoute, Params, Router } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of } from 'rxjs';
-import { HostListener } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-rating',
@@ -17,51 +14,129 @@ import { HostListener } from '@angular/core';
   imports: [CommonModule, FormsModule, LucideAngularModule]
 })
 export class RatingComponent implements OnInit, OnDestroy {
-  // Signals for local state
+  // State
   rating = signal(0);
   hoveredRating = signal(0);
   currentMovie = signal<Movie | null>(null);
   isSubmitting = signal(false);
   hasSubmitted = signal(false);
-  hasAlreadyRated = signal(false); // New signal to track if user already rated
+  hasAlreadyRated = signal(false);
   ratingCount = signal(0);
   userCode = signal('');
-  currentView = signal<'idle' | 'rating'>('idle');
-
-  private routeParams!: () => Params;
+  posterUrl = signal('');
+  
+  
+  // This is the SINGLE source of truth for which screen to show
+currentView = signal<'idle' | 'rating' | 'submitted' | 'waiting'>('waiting');
   private socketService = inject(SocketService);
   private apiService = inject(ApiService);
 
-  constructor(private route: ActivatedRoute, private router: Router) {
-    this.routeParams = toSignal(this.route.queryParams, { initialValue: {} as Params });
-  }
+  constructor(private route: ActivatedRoute, private router: Router) {}
 
-@HostListener('window:popstate', ['$event'])
-  onPopState(event: PopStateEvent) {
-    const code = localStorage.getItem('userCode');
-    if (code) {
-      // Prevent back navigation by pushing the current state
-      history.pushState(null, '', `/rating?code=${code}`);
-      this.router.navigate(['/rating'], { queryParams: { code } });
-    } else {
-      this.router.navigate(['/']);
-    }
-  }
-
-  ngOnInit(): void {
+ngOnInit(): void {
     const code = localStorage.getItem('userCode');
     if (!code) {
       this.router.navigate(['/']);
       return;
     }
     this.userCode.set(code);
-
-    // Push current state to prevent back navigation
-    history.pushState(null, '', `/rating?code=${code}`);
+    history.pushState(null, '', '/rating');
 
     this.socketService.connect();
     this.setupSocketListeners();
-    this.loadCurrentMovie();
+    
+    // Load movie FIRST, then determine view
+    this.apiService.getCurrentMovie().subscribe({
+      next: (movie) => {
+        this.currentMovie.set(movie);
+        if (movie) {
+          this.loadRatingCount(movie.id);
+        }
+        this.determineInitialView(code);
+      },
+      error: () => {
+        this.currentMovie.set(null);
+        this.determineInitialView(code);
+      }
+    });
+  }
+
+  private determineInitialView(code: string): void {
+    this.apiService.isRatingSessionActive().subscribe({
+      next: ({ isActive }) => {
+        if (isActive) {
+          // Rating session is active — load current movie and decide if user can rate
+          this.apiService.getCurrentMovie().subscribe({
+            next: (movie) => {
+              this.currentMovie.set(movie);
+              this.posterUrl.set('/posters/' + movie.id + '.jpg');
+              if (!movie) {
+                this.currentView.set('waiting');
+                return;
+              }
+
+              this.loadRatingCount(movie.id);
+              
+              // Check if user has already rated this movie
+              this.apiService.userHasRated(code, movie.id).subscribe({
+                next: (hasRated) => {
+                  if (hasRated) {
+                    this.hasAlreadyRated.set(true);
+                    this.hasSubmitted.set(true);
+                    this.currentView.set('submitted');
+                  } else {
+                    
+                    this.currentView.set('rating');
+                  }
+                },
+                error: () => {
+                  // On error assume they can rate
+                  this.currentView.set('rating');
+                }
+              });
+            },
+            error: () => {
+              this.currentView.set('idle');
+            }
+          });
+        } else {
+          // No active session — show idle/waiting state depending on current movie
+          this.apiService.getCurrentMovie().subscribe({
+            next: (movie) => {
+              this.currentMovie.set(movie);
+              if (!movie) {
+                this.currentView.set('waiting');
+                return;
+              }
+
+              this.loadRatingCount(movie.id);
+              // When not active, show idle but still check if user already rated for that movie
+              this.apiService.userHasRated(code, movie.id).subscribe({
+                next: (hasRated) => {
+                  if (hasRated) {
+                    this.hasAlreadyRated.set(true);
+                    this.hasSubmitted.set(true);
+                    this.currentView.set('submitted');
+                  } else {
+                    this.currentView.set('idle');
+                  }
+                },
+                error: () => {
+                  this.currentView.set('idle');
+                }
+              });
+            },
+            error: () => {
+              this.currentView.set('idle');
+            }
+          });
+        }
+      },
+      error: () => {
+        // On error, fall back to idle
+        this.currentView.set('idle');
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -69,154 +144,138 @@ export class RatingComponent implements OnInit, OnDestroy {
   }
 
   private setupSocketListeners(): void {
-    // Listen for new movie selections
-    this.socketService.onNewMovie(() => {
-      this.currentView.set('rating');
-      this.loadCurrentMovie();
-      this.resetSubmissionState();
-    });
-    
-    // Listen for idle state
-    this.socketService.onIdle(() => {
+    // Admin selected a movie → go to idle (waiting for rating period)
+    this.socketService.onMovieSelected(() => {
       this.currentView.set('idle');
-      this.rating.set(0);
-      this.hoveredRating.set(0);
-      this.currentMovie.set(null);
-      this.resetSubmissionState();
+      this.loadCurrentMovie();
+      this.resetRatingState();
     });
 
-    // Listen for rating count updates
-    this.socketService.onRatingCountUpdate((movieId: number, ratingCount: number) => {
-      this.handleRatingCountUpdate(movieId, ratingCount);
+    // Admin started rating period
+this.socketService.onStartRatingSession(() => {
+  this.apiService.getCurrentMovie().subscribe({
+      next: (movie) => {
+        this.currentMovie.set(movie);
+        this.loadRatingCount(movie.id);
+      },
+      error: () => {
+        this.currentMovie.set(null);
+      }
+    });
+      this.apiService.userHasRated(this.userCode(), this.currentMovie()?.id!).subscribe({
+        next: (hasRated) => {
+          if (hasRated) {
+            this.hasAlreadyRated.set(true);
+            this.hasSubmitted.set(true);
+            this.currentView.set('submitted');
+          } else {
+            this.resetRatingState();
+            console.log(this.currentMovie()?.id);
+            this.posterUrl.set('/posters/' + this.currentMovie()?.id + '.jpg');
+            console.log(this.currentMovie()?.id);
+            this.currentView.set('rating');
+            console.log(this.currentMovie()?.id);
+          }
+        },
+        error: () => {
+          // SAFE fallback: assume already rated
+          this.hasAlreadyRated.set(true);
+          this.hasSubmitted.set(true);
+          this.currentView.set('submitted');
+        }
+      });
+    });
+
+
+    // Admin went back to idle screen
+    this.socketService.onIdle(() => {
+      this.currentView.set('idle');
+      this.currentMovie.set(null);
+      this.resetRatingState();
+    });
+
+    // Real-time rating count update
+    this.socketService.onRatingCountUpdate((movieId: number, count: number) => {
+      if (this.currentMovie()?.id === movieId) {
+        this.ratingCount.set(count);
+      }
     });
   }
 
-  private resetSubmissionState(): void {
+  private resetRatingState(): void {
     this.hasSubmitted.set(false);
     this.hasAlreadyRated.set(false);
-    this.ratingCount.set(0);
     this.rating.set(0);
     this.hoveredRating.set(0);
+    this.ratingCount.set(0);
   }
 
   private loadCurrentMovie(): void {
     this.apiService.getCurrentMovie().subscribe({
-      next: (movie: Movie) => {
+      next: (movie) => {
         this.currentMovie.set(movie);
         if (movie) {
           this.loadRatingCount(movie.id);
         }
       },
-      error: (error) => {
-        console.error('Error loading current movie:', error);
+      error: () => {
         this.currentMovie.set(null);
-        this.ratingCount.set(0);
       }
     });
   }
-
 
   private loadRatingCount(movieId: number): void {
     this.apiService.getNumberOfRatingsForMovie(movieId).subscribe({
-      next: (count: number) => {
-        this.ratingCount.set(count);
+      next: (count) => this.ratingCount.set(count),
+      error: () => this.ratingCount.set(0)
+    });
+  }
+
+  handleSubmit(): void {
+    if (this.hasAlreadyRated() || this.rating() === 0 || !this.currentMovie()) return;
+
+    this.isSubmitting.set(true);
+    const ratingData: RatingData = {
+      value: this.rating(),
+      userCode: this.userCode()
+    };
+
+    this.apiService.submitRating(this.currentMovie()!.id, ratingData).subscribe({
+      next: () => {
+        this.hasSubmitted.set(true);
+        this.hasAlreadyRated.set(true);
+        this.isSubmitting.set(false);
+        this.currentView.set('submitted'); // Switch to submitted screen
       },
-      error: (error) => {
-        console.error('Error loading rating count:', error);
-        this.ratingCount.set(0);
+      error: (err) => {
+        this.isSubmitting.set(false);
+        if (err.status === 400 && err.error?.message?.includes('already rated')) {
+          this.hasAlreadyRated.set(true);
+          this.currentView.set('submitted');
+        } else {
+          alert('Submission failed. Try again.');
+        }
       }
     });
   }
 
-  private handleRatingCountUpdate(movieId: number, ratingCount: number): void {
-    const currentMovie = this.currentMovie();
-    if (currentMovie && currentMovie.id === movieId) {
-      this.ratingCount.set(ratingCount);
-    }
-  }
-
-  handleSubmit(): void {
-    const currentRating = this.rating();
-    const currentUserCode = this.userCode();
-    const currentMovie = this.currentMovie();
-
-    if (this.hasAlreadyRated()) {
-      alert('You have already rated this movie.');
-      return;
-    }
-
-    if (currentRating > 0 && currentUserCode && currentMovie) {
-      this.isSubmitting.set(true);
-      const ratingData: RatingData = {
-        value: currentRating,
-        userCode: currentUserCode
-      };
-
-      this.apiService.submitRating(currentMovie.id, ratingData).subscribe({
-        next: () => {
-          console.log(`Rating ${currentRating} submitted successfully for movie ${currentMovie.title}`);
-          this.hasSubmitted.set(true);
-          this.hasAlreadyRated.set(true);
-          this.isSubmitting.set(false);
-        },
-        error: (error) => {
-          console.error('Failed to submit rating:', error);
-          this.isSubmitting.set(false);
-          
-          // Handle specific error cases
-          if (error.status === 400 && error.error?.message?.includes('already rated')) {
-            this.hasAlreadyRated.set(true);
-            this.hasSubmitted.set(true);
-            alert('You have already rated this movie.');
-          } else {
-            alert('Failed to submit rating. Please try again.');
-          }
-        }
-      });
-    } else {
-      if (!currentUserCode) {
-        alert('Please enter your event code before submitting.');
-      } else if (!currentMovie) {
-        alert('No movie selected to rate.');
-      } else if (currentRating === 0) {
-        alert('Please select a rating.');
-      }
-    }
-  }
-
+  // Star interaction
   setRating(value: number): void {
-    if (!this.hasAlreadyRated()) {
-      this.rating.set(value);
-    }
+    if (!this.hasAlreadyRated()) this.rating.set(value);
   }
-
   setHoveredRating(value: number): void {
-    if (!this.hasAlreadyRated()) {
-      this.hoveredRating.set(value);
-    }
+    if (!this.hasAlreadyRated()) this.hoveredRating.set(value);
   }
-
   clearHoveredRating(): void {
-    if (!this.hasAlreadyRated()) {
-      this.hoveredRating.set(0);
-    }
+    if (!this.hasAlreadyRated()) this.hoveredRating.set(0);
   }
 
   getStarState(starIndex: number): 'full' | 'half' | 'empty' {
-    if (this.hasAlreadyRated()) {
-      return 'empty'; // Don't show hover effects if already rated
-    }
-    
-    const effectiveRating = this.hoveredRating() || this.rating();
-    if (effectiveRating >= starIndex) {
-      return 'full';
-    } else if (effectiveRating === starIndex - 0.5) {
-      return 'half';
-    }
+    if (this.hasAlreadyRated()) return 'empty';
+    const effective = this.hoveredRating() || this.rating();
+    if (effective >= starIndex) return 'full';
+    if (effective === starIndex - 0.5) return 'half';
     return 'empty';
   }
 
-  setUserCode(code: string): void {
-    this.userCode.set(code);
-  }
 }

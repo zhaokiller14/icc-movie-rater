@@ -20,7 +20,7 @@ export class RatingsController {
   @Post(':movieId')
   @UsePipes(new ValidationPipe({ transform: true }))
   async create(@Param('movieId') movieId: number, @Body() createRatingDto: CreateRatingDto) {
-    await this.usersService.validateCode(createRatingDto.userCode, movieId);
+    await this.usersService.validateCode(createRatingDto.userCode);
     const rating = await this.ratingsService.create(movieId, createRatingDto);
     await this.usersService.markMovieAsRated(createRatingDto.userCode, movieId);
     return rating;

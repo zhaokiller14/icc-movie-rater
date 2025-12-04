@@ -5,7 +5,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
   // Get frontend URL - use exact Azure URL
-  const frontendUrl = 'https://icc-movie-rating.azurewebsites.net';
+  const frontendUrl = 'https://icc-movie-rating-backend.azurewebsites.net';
   
   // ENABLE CORS with exact URL
   app.enableCors({
@@ -23,9 +23,9 @@ async function bootstrap() {
     maxAge: 3600
   });
   
-  // Set global prefix
+/*   // Set global prefix
   app.setGlobalPrefix('api');
-  
+   */
   // IMPORTANT: Use Azure's port (8080), not 3000
   const port = process.env.PORT || 8080;
   await app.listen(port);

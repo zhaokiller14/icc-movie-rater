@@ -14,10 +14,11 @@ export class UsersController {
   async getAllCodes(): Promise<UserCode[]> {
     return this.usersService.getAllCodes();
   }
-  @Get('rated-movies/:code')
-  async getCodeRatedMovies(@Param('code') code: string): Promise<number[]> {
-    return this.usersService.getCodeRatedMovies(code);
-  }
+@Get('rated-movies/:code')
+async getRatedMovies(@Param('code') code: string) {
+  const movieIds = await this.usersService.getCodeRatedMovies(code);
+  return { userRatedMovies: movieIds };
+}
 @Get('used-codes-count')
 async getUsedCodesCount(): Promise<number> {
   return this.usersService.getUsedCodesCount();
@@ -31,5 +32,15 @@ async getUsedCodesList(): Promise<UserCode[]> {
 @Get('is-admin/:code')
 async isAdmin(@Param('code') code: string): Promise<boolean> {
   return this.usersService.isAdmin(code);
+}
+
+@Get('is-valid/:code')
+async isValidCode(@Param('code') code: string): Promise<{ isValid: boolean }> {
+  try {
+    await this.usersService.validateCode(code);
+    return { isValid: true };
+  } catch {
+    return { isValid: false };
+  }
 }
 }

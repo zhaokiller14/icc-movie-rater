@@ -10,19 +10,25 @@ export class AdminService {
     private ratingsService: RatingsService,
     private eventsGateway: EventsGateway,
   ) {}
-
+  private isActive = false;
   async selectMovie(movieId: number): Promise<void> {
     await this.moviesService.setCurrent(movieId);
+    this.eventsGateway.broadcastMovieSelected(movieId);
   }
   async startRatingSession(movieId: number): Promise<void> {
-    this.eventsGateway.broadcastNewMovie(movieId);
+    this.isActive = true;
+    this.eventsGateway.broadcastStartRatingSession(movieId);
+
   }
   async setIdle(): Promise<void> {
+    this.isActive = false;
     this.eventsGateway.broadcastIdle();
   }
 
   async getAverages(): Promise<{ movieId: number; average: number }[]> {
     return this.ratingsService.getAllAverages();
   }
-  
+  async isRatingSessionActive():Promise<boolean> {
+    return this.isActive;
+  }
 }

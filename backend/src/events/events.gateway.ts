@@ -13,8 +13,11 @@ export class EventsGateway {
   @WebSocketServer()
   server: Server;
 
-  broadcastNewMovie(movieId: number) {
-    this.server.emit('newMovie', { movieId });
+  broadcastMovieSelected(movieId: number) {
+    this.server.emit('movieSelected', { movieId });
+  }
+  broadcastStartRatingSession(movieId: number) {
+    this.server.emit('startRatingSession', { movieId });
   }
 
   broadcastIdle() {
