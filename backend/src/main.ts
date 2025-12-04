@@ -5,7 +5,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
   // Get frontend URL - use exact Azure URL
-  const frontendUrl = 'https://icc-movie-rating-backend.azurewebsites.net';
+  const frontendUrl = 'https://icc-movie-rating.azurewebsites.net';
   
   // ENABLE CORS with exact URL
   app.enableCors({
