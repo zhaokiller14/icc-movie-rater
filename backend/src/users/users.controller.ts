@@ -19,15 +19,7 @@ async getRatedMovies(@Param('code') code: string) {
   const movieIds = await this.usersService.getCodeRatedMovies(code);
   return { userRatedMovies: movieIds };
 }
-@Get('used-codes-count')
-async getUsedCodesCount(): Promise<number> {
-  return this.usersService.getUsedCodesCount();
-}
 
-@Get('used-codes-list')
-async getUsedCodesList(): Promise<UserCode[]> {
-  return this.usersService.getUsedCodesList();
-}
 
 @Get('is-admin/:code')
 async isAdmin(@Param('code') code: string): Promise<boolean> {

@@ -24,18 +24,22 @@
           id="code"
           #codeInput
           type="text"
-          maxlength="3"
+          maxlength="6"
           placeholder="CODE"
           [value]="code"
           (input)="updateCode(codeInput.value)"
           class="text-center text-2xl font-bold tracking-widest uppercase h-14 w-full border border-input bg-background px-3 py-2 rounded-md"
         />
+        <!-- Error message -->
+        <p *ngIf="errorMessage" class="text-sm text-red-500 text-center">
+          {{ errorMessage }}
+        </p>
       </div>
 
       <button
         type="submit"
         class="w-full h-12 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-md transition-colors"
-        [disabled]="code.length !== 3"
+        [disabled]="code.length !== 6"
       >
         Enter Festival
       </button>

@@ -63,34 +63,27 @@ ngOnInit(): void {
   }
 
   private setupSocketListeners(): void {
-    console.log('Setting up socket listeners for admin...');
-
     // Listen for rating average updates
     this.socketService.onRatingUpdate((movieId: number, average: number) => {
-      console.log('Admin received ratingUpdate:', movieId, average);
       this.handleRatingUpdate(movieId, average);
     });
 
     // Listen for rating count updates
     this.socketService.onRatingCountUpdate((movieId: number, ratingCount: number) => {
-      console.log('Admin received ratingCountUpdate:', movieId, ratingCount);
       this.handleRatingCountUpdate(movieId, ratingCount);
     });
 
     // Listen for new movie selections
     this.socketService.onMovieSelected(() => {
-      console.log('Admin received movieSelected event');
       this.loadCurrentMovie();
     });
 
     // Listen for idle state
     this.socketService.onIdle(() => {
-      console.log('Admin received idle event');
       this.currentView.set('idle');
     });
   }
   private handleRatingUpdate(movieId: number, average: number): void {
-    console.log(`Admin: Real-time average update for movie ${movieId}: ${average}`);
     
     // Update movies array with new average
     this.movies.update(currentMovies => 
@@ -103,12 +96,10 @@ ngOnInit(): void {
     const currentMovieValue = this.currentMovie();
     if (currentMovieValue?.id === movieId) {
       this.currentMovie.update(movie => movie ? { ...movie, average } : null);
-      console.log(`Admin: Updated current movie average to ${average}`);
     }
   }
 
   private handleRatingCountUpdate(movieId: number, ratingCount: number): void {
-    console.log(`Admin: Real-time count update for movie ${movieId}: ${ratingCount} ratings`);
     
     // Update movies array with new rating count
     this.movies.update(currentMovies => 
@@ -121,7 +112,6 @@ ngOnInit(): void {
     const currentMovieValue = this.currentMovie();
     if (currentMovieValue?.id === movieId) {
       this.currentMovie.update(movie => movie ? { ...movie, ratingCount } : null);
-      console.log(`Admin: Updated current movie rating count to ${ratingCount}`);
     }
 
     // Remove from loading set if it was loading

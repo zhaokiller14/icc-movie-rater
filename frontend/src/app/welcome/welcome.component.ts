@@ -1,16 +1,18 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { ApiService } from '../services/api.service';
-import { catchError, tap } from 'rxjs/operators';
-import { of } from 'rxjs';
-
+import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-welcome',
   templateUrl: './welcome.component.html',
-  styleUrls: ['./welcome.component.css']
+  styleUrls: ['./welcome.component.css'],
+  standalone: true,
+  imports: [CommonModule]
 })
 export class WelcomeComponent {
   code: string = '';
+  errorMessage: string = '';
+  isChecking = false;
 
   constructor(private router: Router, private apiService: ApiService) {
     localStorage.removeItem('userCode');
@@ -18,34 +20,38 @@ export class WelcomeComponent {
 
   handleSubmit(event: Event): void {
     event.preventDefault();
-    if (this.code.trim().length === 3) {
-      this.apiService.isValidUserCode(this.code).pipe(
-        tap(response => {
-          if (response.isValid) {
-            localStorage.setItem('userCode', this.code);
-          }}
-          
-      )).subscribe();
-      this.apiService.isAdmin(this.code).pipe(
-        tap(response => {
-          console.log(response);
-          if (response) {
-            this.router.navigate(['/admin']);
-          } else {
-            this.router.navigate(['/rating']);
-          }
-        }),
-        catchError(error => {
-          console.error('Error checking admin:', error);
-          localStorage.setItem('userCode', this.code);
-          this.router.navigate(['/rating']);
-          return of(null);
-        })
-      ).subscribe();
-    }
+    this.errorMessage = '';
+    this.isChecking = true;
+
+    if (this.code.trim().length !== 6) return;
+
+    this.apiService.isValidUserCode(this.code).subscribe({
+      next: (res) => {
+        if (!res.isValid) {
+          this.errorMessage = 'This code does not exist or has expired';
+          this.isChecking = false;
+          return;
+        }
+
+        localStorage.setItem('userCode', this.code);
+
+        // Check if admin
+        this.apiService.isAdmin(this.code).subscribe({
+          next: (isAdmin) => {
+            this.router.navigate([isAdmin ? '/admin' : '/rating']);
+          },
+          error: () => this.router.navigate(['/rating'])
+        });
+      },
+      error: () => {
+        this.errorMessage = 'Network error. Try again.';
+        this.isChecking = false;
+      }
+    });
   }
 
   updateCode(value: string): void {
-    this.code = value.toUpperCase();
+    this.code = value.toUpperCase().slice(0, 6);
+    this.errorMessage = '';
   }
 }

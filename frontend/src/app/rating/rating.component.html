@@ -1,24 +1,24 @@
 <div class="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
   <div class="absolute -left-96 top-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/20 blur-3xl"></div>
 
-  <div class="relative z-10 w-full max-w-2xl px-6">
+  <div class="relative z-10 w-full max-w-2xl px-4 sm:px-6">
 <!-- ==================== WAITING FOR EVENT START (PRE-EVENT) ==================== -->
-<div *ngIf="currentView() === 'waiting'" class="text-center space-y-12 py-20 px-6">
-  <div class="w-32 h-32 mx-auto mb-8 bg-muted/20 rounded-full flex items-center justify-center border border-border">
-    <svg class="w-16 h-16 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div *ngIf="currentView() === 'waiting'" class="text-center space-y-8 sm:space-y-12 py-12 sm:py-20 px-4 sm:px-6">
+  <div class="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-6 sm:mb-8 bg-muted/20 rounded-full flex items-center justify-center border border-border">
+    <svg class="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
         d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
     </svg>
   </div>
 
-  <div class="space-y-4 max-w-lg mx-auto">
-    <h1 class="text-4xl md:text-5xl font-bold text-foreground tracking-tight">
+  <div class="space-y-3 sm:space-y-4 max-w-lg mx-auto">
+    <h1 class="text-2xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight">
       Event Has Not Started Yet
     </h1>
-    <p class="text-xl text-muted-foreground">
+    <p class="text-base sm:text-xl text-muted-foreground">
       INSAT Célèbre Le Cinéma • Ciné Radio INSAT
     </p>
-    <p class="text-lg text-muted-foreground mt-6">
+    <p class="text-sm sm:text-lg text-muted-foreground mt-4 sm:mt-6">
       The movie screening and rating will begin soon. Please wait for the first movie to be selected by the organizers.
     </p>
   </div>
@@ -29,23 +29,23 @@
     <div class="w-3 h-3 rounded-full bg-primary/60 animate-pulse [animation-delay:0.4s]"></div>
   </div>
 
-  <p class="text-sm text-muted-foreground/70 mt-10">
+  <p class="text-xs sm:text-sm text-muted-foreground/70 mt-6 sm:mt-10">
     Stay tuned — the magic is about to begin!
   </p>
 </div>
     
     
     <!-- ==================== IDLE SCREEN ==================== -->
-    <div *ngIf="currentView() === 'idle'" class="text-center space-y-12 py-20">
-      <div class="w-48 h-48 mx-auto rounded-2xl bg-muted/10 border border-border flex items-center justify-center backdrop-blur-sm">
-        <img src="/LogoType@8x.png" alt="ICC logo" class="w-32 h-32 object-contain"/>
+    <div *ngIf="currentView() === 'idle'" class="text-center space-y-8 sm:space-y-12 py-12 sm:py-20">
+      <div class="w-32 h-32 sm:w-48 sm:h-48 mx-auto rounded-2xl bg-muted/10 border border-border flex items-center justify-center backdrop-blur-sm">
+        <img src="/LogoType@8x.png" alt="ICC logo" class="w-20 h-20 sm:w-32 sm:h-32 object-contain"/>
       </div>
 
-      <div class="space-y-4">
-        <h1 class="text-5xl font-bold text-foreground tracking-tight">
+      <div class="space-y-3 sm:space-y-4">
+        <h1 class="text-3xl sm:text-5xl font-bold text-foreground tracking-tight">
           Screening in Progress
         </h1>
-        <p class="text-xl text-muted-foreground">
+        <p class="text-base sm:text-xl text-muted-foreground px-4">
           INSAT Célèbre Le Cinéma • Ciné Radio INSAT
         </p>
       </div>
@@ -58,21 +58,21 @@
     </div>
 
     <!-- ==================== RATING SCREEN ==================== -->
-    <div *ngIf="currentView() === 'rating'" class="bg-card border border-border rounded-2xl p-12 shadow-2xl">
-      <div class="text-center mb-8">
+    <div *ngIf="currentView() === 'rating'" class="bg-card border border-border rounded-2xl p-6 sm:p-12 shadow-2xl">
+      <div class="text-center mb-6 sm:mb-8">
         <!-- Movie Poster -->
-        <div class="w-32 h-48 mx-auto mb-6 rounded-lg overflow-hidden shadow-lg border border-border">
+        <div class="w-24 h-36 sm:w-32 sm:h-48 mx-auto mb-4 sm:mb-6 rounded-lg overflow-hidden shadow-lg border border-border">
           <img [src]="'/posters/' + currentMovie()?.id + '.jpg'" 
                alt="{{ currentMovie()?.title }} poster"
                class="w-full h-full object-cover" />
         </div>
         
-        <h2 class="text-3xl font-bold mb-2 text-foreground">{{ currentMovie()?.title }}</h2>
-        <p class="text-xl text-muted-foreground">Rate The Movie!</p>
+        <h2 class="text-xl sm:text-3xl font-bold mb-2 text-foreground">{{ currentMovie()?.title }}</h2>
+        <p class="text-base sm:text-xl text-muted-foreground">Rate The Movie!</p>
       </div>
 
       <!-- Stars -->
-      <div class="flex justify-center gap-3 mb-10">
+      <div class="flex justify-center gap-1.5 sm:gap-3 mb-6 sm:mb-10">
         <ng-container *ngFor="let i of [1,2,3,4,5]">
           <div class="relative cursor-pointer">
             <div class="absolute inset-0 w-1/2 z-10"
@@ -85,10 +85,10 @@
                  (mouseleave)="clearHoveredRating()"></div>
 
             <ng-container [ngSwitch]="getStarState(i)">
-              <svg *ngSwitchCase="'full'" class="w-20 h-20 fill-primary stroke-primary" viewBox="0 0 24 24">
+              <svg *ngSwitchCase="'full'" class="w-12 h-12 sm:w-20 sm:h-20 fill-primary stroke-primary" viewBox="0 0 24 24">
                 <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.789 1.402 8.172L12 18.896l-7.336 3.876 1.402-8.172L.132 9.21l8.2-1.192L12 .587z"/>
               </svg>
-              <svg *ngSwitchCase="'half'" class="w-20 h-20 stroke-primary" viewBox="0 0 24 24">
+              <svg *ngSwitchCase="'half'" class="w-12 h-12 sm:w-20 sm:h-20 stroke-primary" viewBox="0 0 24 24">
                 <defs>
                   <linearGradient [attr.id]="'halfGrad-' + i" x1="0" x2="1">
                     <stop offset="50%" stop-color="currentColor"/>
@@ -98,7 +98,7 @@
                 <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.789 1.402 8.172L12 18.896l-7.336 3.876 1.402-8.172L.132 9.21l8.2-1.192L12 .587z"
                       [attr.fill]="'url(#halfGrad-' + i + ')'"/>
               </svg>
-              <svg *ngSwitchDefault class="w-20 h-20 fill-none stroke-muted-foreground" viewBox="0 0 24 24">
+              <svg *ngSwitchDefault class="w-12 h-12 sm:w-20 sm:h-20 fill-none stroke-muted-foreground" viewBox="0 0 24 24">
                 <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.789 1.402 8.172L12 18.896l-7.336 3.876 1.402-8.172L.132 9.21l8.2-1.192L12 .587z" stroke-width="1.5"/>
               </svg>
             </ng-container>
@@ -106,18 +106,18 @@
         </ng-container>
       </div>
 
-      <div class="text-center mb-8">
-        <p class="text-5xl font-bold text-primary">{{ rating() > 0 ? rating().toFixed(1) : '—' }}</p>
-        <p class="text-sm text-muted-foreground">out of 5 stars</p>
+      <div class="text-center mb-6 sm:mb-8">
+        <p class="text-4xl sm:text-5xl font-bold text-primary">{{ rating() > 0 ? rating().toFixed(1) : '—' }}</p>
+        <p class="text-xs sm:text-sm text-muted-foreground">out of 5 stars</p>
       </div>
 
-      <div class="text-center mb-10 text-muted-foreground">
+      <div class="text-center mb-6 sm:mb-10 text-sm sm:text-base text-muted-foreground">
         {{ ratingCount() }} rating{{ ratingCount() !== 1 ? 's' : '' }} submitted
       </div>
 
       <button (click)="handleSubmit()"
               [disabled]="rating() === 0 || isSubmitting() || hasAlreadyRated()"
-              class="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground rounded-md disabled:opacity-50">
+              class="w-full h-12 sm:h-14 text-base sm:text-lg font-semibold bg-primary text-primary-foreground rounded-md disabled:opacity-50">
         <span *ngIf="isSubmitting()" class="flex items-center justify-center gap-2">
           <span class="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full"></span>
           Submitting...
@@ -127,30 +127,29 @@
     </div>
 
     <!-- ==================== SUBMITTED SCREEN ==================== -->
-    <div *ngIf="currentView() === 'submitted'" class="bg-card border border-border rounded-2xl p-12 shadow-2xl text-center">
-      <div class="w-24 h-24 mx-auto mb-8 bg-green-500/20 rounded-full flex items-center justify-center border border-green-500/30">
-        <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div *ngIf="currentView() === 'submitted'" class="bg-card border border-border rounded-2xl p-6 sm:p-12 shadow-2xl text-center">
+      <div class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 sm:mb-8 bg-green-500/20 rounded-full flex items-center justify-center border border-green-500/30">
+        <svg class="w-10 h-10 sm:w-12 sm:h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
         </svg>
       </div>
 
-      <h2 class="text-4xl font-bold mb-4 text-foreground">Thank You!</h2>
-      <p class="text-xl text-muted-foreground mb-8">
+      <h2 class="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 text-foreground">Thank You!</h2>
+      <p class="text-base sm:text-xl text-muted-foreground mb-6 sm:mb-8 px-2">
         Your rating for <strong>{{ currentMovie()?.title }}</strong> has been submitted.
       </p>
 
-      <div class="p-8 bg-muted/30 rounded-xl border border-border">
-        <p class="text-6xl font-bold text-primary">{{ ratingCount() }}</p>
-        <p class="text-lg text-muted-foreground mt-2">
+      <div class="p-6 sm:p-8 bg-muted/30 rounded-xl border border-border">
+        <p class="text-4xl sm:text-6xl font-bold text-primary">{{ ratingCount() }}</p>
+        <p class="text-sm sm:text-lg text-muted-foreground mt-2">
           total rating{{ ratingCount() !== 1 ? 's' : '' }} for this movie
         </p>
       </div>
 
-      <p class="text-sm text-muted-foreground mt-10">
+      <p class="text-xs sm:text-sm text-muted-foreground mt-6 sm:mt-10">
         Wait for the next movie or final results.
       </p>
     </div>
 
   </div>
 </div>
-

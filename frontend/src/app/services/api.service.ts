@@ -71,9 +71,7 @@ export class ApiService {
 userHasRated(code: string, movieId: number): Observable<boolean> {
   return this.http
     .get<{ userRatedMovies: number[] }>(`${this.baseUrl}/users/rated-movies/${code}`)
-    .pipe(
-      tap(res => console.log('User rated movies:', res.userRatedMovies, 'includes movieId:', res.userRatedMovies.includes(movieId))),
-      
+    .pipe(      
       map(res => res.userRatedMovies?.includes(movieId) ?? false),
       // NEVER silently return false on error!
       catchError(err => {

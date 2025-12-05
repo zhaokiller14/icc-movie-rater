@@ -15,7 +15,7 @@ export class UsersService {
     for (let i = 0; i < count; i++) {
       let code: string;
       do {
-        code = Math.random().toString(36).substring(2, 5).toUpperCase();
+        code = Math.random().toString(36).substring(2, 8).toUpperCase();
       } while (await this.userCodeRepo.findOne({ where: { code } }));
       const newCode = this.userCodeRepo.create({ code, ratedMovies: [] });
       await this.userCodeRepo.save(newCode);
