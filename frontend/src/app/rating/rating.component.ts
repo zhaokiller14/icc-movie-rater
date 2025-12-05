@@ -170,11 +170,8 @@ this.socketService.onStartRatingSession(() => {
             this.currentView.set('submitted');
           } else {
             this.resetRatingState();
-            console.log(this.currentMovie()?.id);
             this.posterUrl.set('/posters/' + this.currentMovie()?.id + '.jpg');
-            console.log(this.currentMovie()?.id);
             this.currentView.set('rating');
-            console.log(this.currentMovie()?.id);
           }
         },
         error: () => {
